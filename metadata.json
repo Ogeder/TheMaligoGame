@@ -1,0 +1,6 @@
+{
+  "name": "MaliGo",
+  "description": "A financial life simulator and calendar maze game that teaches real-world wealth-building, compound savings, and debt management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

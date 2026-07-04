@@ -1,0 +1,718 @@
+import React, { useState } from "react";
+import { Character, GameState, DecisionOption } from "./types";
+import { getScenariosForMonth, MONTHS } from "./data/scenarios";
+import WelcomeScreen from "./components/WelcomeScreen";
+import Dashboard from "./components/Dashboard";
+import GameBoard from "./components/GameBoard";
+import MonthlyReview from "./components/MonthlyReview";
+import YearSummary from "./components/YearSummary";
+import LifeSpeedrunner from "./components/LifeSpeedrunner";
+import GameOverScreen from "./components/GameOverScreen";
+import FlappyLabyrinth from "./components/FlappyLabyrinth";
+import { Compass, Coins, Sparkles, TrendingUp, AlertTriangle, Heart, RefreshCw, Star } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+
+const INITIAL_STATE: GameState = {
+  character: null,
+  currentMonthIndex: 0,
+  currentEventIndex: 0,
+  balance: 0,
+  savings: 0,
+  debt: 0,
+  stress: 0,
+  lives: 3,
+  netWorthHistory: [],
+  history: [],
+  gamePhase: "WELCOME",
+  isAILoading: false,
+  aiFeedback: null
+};
+
+export default function App() {
+  const [state, setState] = useState<GameState>(INITIAL_STATE);
+  const [currentChoices, setCurrentChoices] = useState<any[]>([]);
+  const [monthStartBalance, setMonthStartBalance] = useState<number>(0);
+  const [monthStartSavings, setMonthStartSavings] = useState<number>(0);
+  const [monthStartDebt, setMonthStartDebt] = useState<number>(0);
+
+  // Rescue and reward state flags
+  const [rescueMessage, setRescueMessage] = useState<{ title: string; desc: string } | null>(null);
+  const [earnedLifeMessage, setEarnedLifeMessage] = useState<string | null>(null);
+  const [showSpeedrunner, setShowSpeedrunner] = useState<boolean>(false);
+  const [showFlappyGame, setShowFlappyGame] = useState<boolean>(false);
+
+  // Compound calculations records
+  const [interestEarned, setInterestEarned] = useState<number>(0);
+  const [interestAccrued, setInterestAccrued] = useState<number>(0);
+
+  // 1. Select Character & Start Game
+  const handleSelectCharacter = (char: Character) => {
+    // Starting balances
+    const initialBalance = char.startingBalance;
+    const initialSavings = char.startingSavings;
+    const initialDebt = char.startingDebt;
+
+    // Apply first month's salary and fixed costs at the very start
+    const fixedRent = char.baseRent;
+    const netStartBalance = initialBalance + char.baseIncome - fixedRent;
+
+    setState({
+      ...INITIAL_STATE,
+      character: char,
+      balance: netStartBalance,
+      savings: initialSavings,
+      debt: initialDebt,
+      stress: 15, // start with minor baseline stress
+      gamePhase: "PLAYING"
+    });
+
+    setMonthStartBalance(netStartBalance);
+    setMonthStartSavings(initialSavings);
+    setMonthStartDebt(initialDebt);
+    setCurrentChoices([]);
+  };
+
+  // 2. Handle Decision Selection
+  const handleChoiceSelected = (option: DecisionOption) => {
+    if (!state.character) return;
+
+    let newBalance = state.balance + option.balanceChange;
+    let newSavings = state.savings + option.savingsChange;
+    let newDebt = state.debt + option.debtChange;
+    let newStress = Math.max(0, Math.min(100, state.stress + option.stressChange));
+
+    // Real-world Cash Crisis Solver
+    // If Cash Balance goes negative:
+    if (newBalance < 0) {
+      // 1. Check if we have Savings to cover the deficit
+      if (newSavings >= Math.abs(newBalance)) {
+        newSavings += newBalance; // deduct from savings
+        newBalance = 0;
+        newStress = Math.min(100, newStress + 10); // minor stress increase for dipping into savings
+      } else {
+        // 2. Drained savings entirely, remaining goes into HIGH-INTEREST DEBT
+        const deficit = Math.abs(newBalance) - newSavings;
+        newSavings = 0;
+        newBalance = 0;
+        newDebt += deficit;
+        newStress = Math.min(100, newStress + 25); // high stress penalty for taking emergency debt!
+      }
+    }
+
+    // --- Loss of Life checking ---
+    const maxAllowedDebt = state.character.baseIncome * 2.5;
+    let finalLives = state.lives;
+    let finalStress = newStress;
+    let finalDebt = newDebt;
+
+    if (newStress >= 100) {
+      finalLives = state.lives - 1;
+      if (finalLives > 0) {
+        finalStress = 35; // reset stress to a restabilized 35%
+        setRescueMessage({
+          title: "🚨 Severe Stress Burnout!",
+          desc: "Your stress levels maxed out at 100%! You lost 1 life. Your support system stepped in to help you relax, resetting your stress back to 35% to let you recover."
+        });
+      }
+    } else if (newDebt >= maxAllowedDebt) {
+      finalLives = state.lives - 1;
+      if (finalLives > 0) {
+        finalDebt = Math.max(0, newDebt - 2000); // defer debt to prevent instant loop death
+        finalStress = 40;
+        setRescueMessage({
+          title: "🛑 Critical Debt Overload!",
+          desc: `Your total debt reached R${Math.round(maxAllowedDebt).toLocaleString()} (exceeding 2.5x your monthly custom income)! You lost 1 life. Creditors restructured your obligations, forgiving R2,000 to prevent immediate default.`
+        });
+      }
+    }
+
+    if (finalLives <= 0) {
+      // Game Over immediately
+      setState(prev => ({
+        ...prev,
+        lives: 0,
+        balance: Math.round(newBalance),
+        savings: Math.round(newSavings),
+        debt: Math.round(newDebt),
+        stress: 100,
+        gamePhase: "GAME_OVER"
+      }));
+      return;
+    }
+
+    // Record the choices made for AI feedback and ledger
+    const financialImpactDesc = [
+      option.balanceChange !== 0 ? `${option.balanceChange > 0 ? "+" : ""}R${option.balanceChange} Cash` : "",
+      option.savingsChange !== 0 ? `${option.savingsChange > 0 ? "+" : ""}R${option.savingsChange} Savings` : "",
+      option.debtChange !== 0 ? `${option.debtChange > 0 ? "+" : ""}R${option.debtChange} Debt` : "",
+      option.stressChange !== 0 ? `${option.stressChange > 0 ? "+" : ""}R${option.stressChange}% Stress` : ""
+    ].filter(Boolean).join(", ");
+
+    const currentScenarios = getScenariosForMonth(state.character.type, state.currentMonthIndex);
+    const currentEvent = currentScenarios[state.currentEventIndex];
+
+    const recordedChoice = {
+      eventTitle: currentEvent.title,
+      choiceText: option.text,
+      financialImpact: financialImpactDesc || "No direct impact"
+    };
+
+    const updatedChoices = [...currentChoices, recordedChoice];
+    setCurrentChoices(updatedChoices);
+
+    const nextEventIndex = state.currentEventIndex + 1;
+
+    if (nextEventIndex >= currentScenarios.length) {
+      // MONTH COMPLETED - Trigger month-end ledger sweep & interest compounding
+      
+      // A. Automatic Payday Savings Sweep
+      // Leave a small cash buffer for the month, sweep remaining surplus to compounding savings
+      let cashBuffer = 300; // default student
+      if (state.character.type === CharacterType_YOUNG_PROFESSIONAL()) {
+        cashBuffer = 1500;
+      } else if (state.character.type === CharacterType_ENTREPRENEUR()) {
+        cashBuffer = 1000;
+      }
+
+      let sweptToSavings = 0;
+      if (newBalance > cashBuffer) {
+        sweptToSavings = newBalance - cashBuffer;
+        newSavings += sweptToSavings;
+        newBalance = cashBuffer;
+      }
+
+      // Check for High Savings Reward (+1 life, capped at 3)
+      const targetSavingsRate = Math.round(state.character.baseIncome * 0.15);
+      let nextLives = finalLives;
+      if (sweptToSavings >= targetSavingsRate) {
+        if (finalLives < 3) {
+          nextLives = finalLives + 1;
+          setEarnedLifeMessage(`Savings Star! You automated R${sweptToSavings.toLocaleString()} (over 15% of your income) into compound savings this month. You earned 1 life back!`);
+        } else {
+          setEarnedLifeMessage(`Savings Champion! You automated R${sweptToSavings.toLocaleString()} into savings. Your lives are already full, you are financially bulletproof!`);
+        }
+      }
+
+      // B. Compound Interest Calculations
+      // Savings compound interest (annual rates: Student 7%, Pro 11%, Ent 6%)
+      let annualSavingsRate = 0.07;
+      if (state.character.type === CharacterType_YOUNG_PROFESSIONAL()) {
+        annualSavingsRate = 0.11;
+      } else if (state.character.type === CharacterType_ENTREPRENEUR()) {
+        annualSavingsRate = 0.06;
+      }
+      
+      const monthlySavingsInterest = newSavings * (annualSavingsRate / 12);
+      newSavings += monthlySavingsInterest;
+
+      // Debt compounding (2.5% per month, standard credit card / retail debt)
+      const monthlyDebtInterest = finalDebt * 0.025;
+      finalDebt += monthlyDebtInterest;
+
+      setInterestEarned(monthlySavingsInterest);
+      setInterestAccrued(monthlyDebtInterest);
+
+      const netExpenses = (monthStartBalance + state.character.baseIncome) - newBalance - sweptToSavings;
+
+      const record: any = {
+        monthName: MONTHS[state.currentMonthIndex].name,
+        income: state.character.baseIncome,
+        expenses: Math.max(0, netExpenses),
+        saved: sweptToSavings,
+        endBalance: Math.round(newBalance),
+        endSavings: Math.round(newSavings),
+        endDebt: Math.round(finalDebt),
+        stress: finalStress,
+        choicesMade: updatedChoices
+      };
+
+      const finalNetWorth = Math.round(newBalance + newSavings - finalDebt);
+      const updatedNetWorthHistory = [...state.netWorthHistory, finalNetWorth];
+
+      setState(prev => ({
+        ...prev,
+        balance: Math.round(newBalance),
+        savings: Math.round(newSavings),
+        debt: Math.round(finalDebt),
+        stress: finalStress,
+        lives: nextLives,
+        netWorthHistory: updatedNetWorthHistory,
+        history: [...prev.history, record],
+        gamePhase: "MONTH_REVIEW",
+        isAILoading: true,
+        aiFeedback: null
+      }));
+
+      // Trigger Server-Side MaliGo AI Financial Coach (Gemini)
+      triggerAICoachFeedback(state.character, state.currentMonthIndex, Math.round(newBalance), Math.round(newSavings), Math.round(finalDebt), finalStress, updatedChoices);
+
+    } else {
+      // Just advance to the next step in the monthly maze
+      setState(prev => ({
+        ...prev,
+        balance: Math.round(newBalance),
+        savings: Math.round(newSavings),
+        debt: Math.round(finalDebt),
+        stress: finalStress,
+        lives: finalLives,
+        currentEventIndex: nextEventIndex
+      }));
+    }
+  };
+
+  // Helper helper to get type references cleanly
+  function CharacterType_YOUNG_PROFESSIONAL() {
+    return "YOUNG_PROFESSIONAL";
+  }
+  function CharacterType_ENTREPRENEUR() {
+    return "ENTREPRENEUR";
+  }
+
+  // 3. Trigger server-side Gemini AI Feedback
+  const triggerAICoachFeedback = async (
+    char: Character,
+    monthIdx: number,
+    bal: number,
+    sav: number,
+    deb: number,
+    strs: number,
+    choices: any[]
+  ) => {
+    try {
+      const response = await fetch("/api/coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          character: char,
+          monthIndex: monthIdx,
+          balance: bal,
+          savings: sav,
+          debt: deb,
+          stress: strs,
+          choices: choices
+        })
+      });
+
+      const data = await response.json();
+      setState(prev => ({
+        ...prev,
+        isAILoading: false,
+        aiFeedback: data.feedback || "Coach Gemini could not compile feedback. Keep going!"
+      }));
+    } catch (err) {
+      console.error("Failed to query AI coach:", err);
+      setState(prev => ({
+        ...prev,
+        isAILoading: false,
+        aiFeedback: "MaliGo local backup: You navigated this chapter securely! Pay down your debt and keep automating savings to build robust long-term wealth."
+      }));
+    }
+  };
+
+  // 4. Advance to Next Month
+  const handleNextMonth = () => {
+    if (!state.character) return;
+
+    if (state.currentMonthIndex >= 11) {
+      // Reached Year End!
+      setState(prev => ({
+        ...prev,
+        gamePhase: "YEAR_SUMMARY"
+      }));
+      return;
+    }
+
+    const nextMonthIdx = state.currentMonthIndex + 1;
+    
+    // Apply monthly salary/allowance and deduct fixed rent/groceries/bills
+    const fixedRent = state.character.baseRent;
+    const fixedGroceries = state.character.baseGroceries;
+    const fixedBills = state.character.baseBills;
+    const totalFixedOutflow = fixedRent + fixedGroceries + fixedBills;
+
+    let updatedBalance = state.balance + state.character.baseIncome - totalFixedOutflow;
+    let updatedSavings = state.savings;
+    let updatedDebt = state.debt;
+    let updatedStress = Math.min(100, Math.max(0, state.stress - 10)); // resting stress relief at month end
+
+    // Check budget deficits on Payday
+    if (updatedBalance < 0) {
+      if (updatedSavings >= Math.abs(updatedBalance)) {
+        updatedSavings += updatedBalance;
+        updatedBalance = 0;
+        updatedStress = Math.min(100, updatedStress + 10);
+      } else {
+        const diff = Math.abs(updatedBalance) - updatedSavings;
+        updatedSavings = 0;
+        updatedBalance = 0;
+        updatedDebt += diff;
+        updatedStress = Math.min(100, updatedStress + 25);
+      }
+    }
+
+    // Check for Payday Default/Burnout Loss of Life
+    const maxAllowedDebt = state.character.baseIncome * 2.5;
+    let finalLives = state.lives;
+    let finalStress = updatedStress;
+    let finalDebt = updatedDebt;
+
+    if (updatedStress >= 100) {
+      finalLives = state.lives - 1;
+      if (finalLives > 0) {
+        finalStress = 35;
+        setRescueMessage({
+          title: "🚨 Severe Payday Burnout!",
+          desc: "Paying off your fixed rent and monthly responsibilities maxed out your stress to 100%! You lost 1 life. Your support system helped you find breathing room, resetting stress back to 35%."
+        });
+      }
+    } else if (updatedDebt >= maxAllowedDebt) {
+      finalLives = state.lives - 1;
+      if (finalLives > 0) {
+        finalDebt = Math.max(0, updatedDebt - 2000);
+        finalStress = 40;
+        setRescueMessage({
+          title: "🛑 Critical Payday Default!",
+          desc: `Your fixed monthly outflows pushed your total debt to R${Math.round(maxAllowedDebt).toLocaleString()}! You lost 1 life. Creditors structured your obligations, forgiving R2,000 to keep you afloat.`
+        });
+      }
+    }
+
+    if (finalLives <= 0) {
+      // Game Over immediately
+      setState(prev => ({
+        ...prev,
+        lives: 0,
+        balance: Math.round(updatedBalance),
+        savings: Math.round(updatedSavings),
+        debt: Math.round(updatedDebt),
+        stress: 100,
+        gamePhase: "GAME_OVER"
+      }));
+      return;
+    }
+
+    setState(prev => ({
+      ...prev,
+      currentMonthIndex: nextMonthIdx,
+      currentEventIndex: 0,
+      balance: Math.round(updatedBalance),
+      savings: Math.round(updatedSavings),
+      debt: Math.round(finalDebt),
+      stress: finalStress,
+      lives: finalLives,
+      gamePhase: "PLAYING",
+      aiFeedback: null
+    }));
+
+    setMonthStartBalance(Math.round(updatedBalance));
+    setMonthStartSavings(Math.round(updatedSavings));
+    setMonthStartDebt(Math.round(finalDebt));
+    setCurrentChoices([]);
+  };
+
+  // 5. Reset Game
+  const handleReset = () => {
+    setState(INITIAL_STATE);
+    setCurrentChoices([]);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col font-sans selection:bg-emerald-100 selection:text-emerald-900">
+      
+      {/* Outer Aesthetic Header */}
+      <header className="bg-slate-900 text-white py-3.5 px-4 border-b border-slate-800">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 bg-emerald-600/20 text-emerald-400 border border-emerald-500/35 rounded-lg font-bold text-xs">
+              M
+            </span>
+            <span className="font-sans font-extrabold text-sm tracking-tight flex items-center gap-1">
+              MaliGo <span className="text-[10px] uppercase font-mono tracking-widest text-emerald-400 font-semibold bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800">v1.2</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+            <Coins className="w-3.5 h-3.5 text-emerald-400" />
+            Empowering Financial Literacy
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Sections */}
+      <main className="flex-grow">
+        <AnimatePresence mode="wait">
+          
+          {state.gamePhase === "WELCOME" && (
+            <motion.div
+              key="welcome"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <WelcomeScreen onSelectCharacter={handleSelectCharacter} />
+            </motion.div>
+          )}
+
+          {state.gamePhase === "PLAYING" && state.character && (
+            <motion.div
+              key="playing"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              {showFlappyGame ? (
+                <FlappyLabyrinth
+                  character={state.character}
+                  currentBalance={state.balance}
+                  currentSavings={state.savings}
+                  currentDebt={state.debt}
+                  stress={state.stress}
+                  onGameRewardsGranted={(rewards) => {
+                    setState(prev => ({
+                      ...prev,
+                      balance: Math.round(prev.balance + rewards.coinsEarned),
+                      savings: Math.round(prev.savings + rewards.shardsEarned * 10),
+                      stress: Math.max(0, prev.stress - rewards.stressRelieved)
+                    }));
+                    setShowFlappyGame(false);
+                  }}
+                  onBack={() => setShowFlappyGame(false)}
+                />
+              ) : (
+                <>
+                  <Dashboard
+                    character={state.character}
+                    monthIndex={state.currentMonthIndex}
+                    eventIndex={state.currentEventIndex}
+                    totalEvents={getScenariosForMonth(state.character.type, state.currentMonthIndex).length}
+                    balance={state.balance}
+                    savings={state.savings}
+                    debt={state.debt}
+                    stress={state.stress}
+                    lives={state.lives}
+                    onReset={handleReset}
+                    onOpenSpeedrunner={() => setShowSpeedrunner(true)}
+                    onOpenFlappyGame={() => setShowFlappyGame(true)}
+                  />
+                  <GameBoard
+                    character={state.character}
+                    event={getScenariosForMonth(state.character.type, state.currentMonthIndex)[state.currentEventIndex]}
+                    stepIndex={state.currentEventIndex}
+                    totalSteps={getScenariosForMonth(state.character.type, state.currentMonthIndex).length}
+                    onChoiceSelected={handleChoiceSelected}
+                    balance={state.balance}
+                    savings={state.savings}
+                    debt={state.debt}
+                    stress={state.stress}
+                    lives={state.lives}
+                    onStatsChanged={(changes) => {
+                      setState(prev => {
+                        let newBalance = prev.balance + (changes.balance ?? 0);
+                        let newSavings = prev.savings + (changes.savings ?? 0);
+                        let newDebt = prev.debt + (changes.debt ?? 0);
+                        let newStress = Math.max(0, Math.min(100, prev.stress + (changes.stress ?? 0)));
+                        let newLives = prev.lives + (changes.lives ?? 0);
+
+                        // Real-world Cash Crisis Solver
+                        if (newBalance < 0) {
+                          if (newSavings >= Math.abs(newBalance)) {
+                            newSavings += newBalance;
+                            newBalance = 0;
+                            newStress = Math.min(100, newStress + 10);
+                          } else {
+                            const deficit = Math.abs(newBalance) - newSavings;
+                            newSavings = 0;
+                            newBalance = 0;
+                            newDebt += deficit;
+                            newStress = Math.min(100, newStress + 25);
+                          }
+                        }
+
+                        // Loss of Life and Burnout checks
+                        const maxAllowedDebt = (prev.character?.baseIncome ?? 1) * 2.5;
+                        
+                        if (newStress >= 100) {
+                          newLives -= 1;
+                          if (newLives > 0) {
+                            newStress = 35;
+                            setRescueMessage({
+                              title: "🚨 Labyrinth Mental Burnout!",
+                              desc: "Your meerkat was overwhelmed by extreme stress in the Labyrinth! You lost 1 life. Your mentor guided you to a resting sanctuary, resetting stress to 35%."
+                            });
+                          }
+                        } else if (newDebt >= maxAllowedDebt) {
+                          newLives -= 1;
+                          if (newLives > 0) {
+                            newDebt = Math.max(0, newDebt - 2000);
+                            newStress = 40;
+                            setRescueMessage({
+                              title: "🛑 Critical Labyrinth Debt Curse!",
+                              desc: `Your total debt in the Labyrinth reached R${Math.round(maxAllowedDebt).toLocaleString()}! You lost 1 life. Creditors restructured your liabilities, forgiving R2,000 to keep you on your path.`
+                            });
+                          }
+                        }
+
+                        if (newLives <= 0) {
+                          return {
+                            ...prev,
+                            lives: 0,
+                            balance: Math.round(newBalance),
+                            savings: Math.round(newSavings),
+                            debt: Math.round(newDebt),
+                            stress: 100,
+                            gamePhase: "GAME_OVER"
+                          };
+                        }
+
+                        return {
+                          ...prev,
+                          balance: Math.round(newBalance),
+                          savings: Math.round(newSavings),
+                          debt: Math.round(newDebt),
+                          stress: newStress,
+                          lives: newLives
+                        };
+                      });
+                    }}
+                  />
+                </>
+              )}
+            </motion.div>
+          )}
+
+          {state.gamePhase === "MONTH_REVIEW" && state.character && state.history.length > 0 && (
+            <motion.div
+              key="review"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <MonthlyReview
+                character={state.character}
+                monthIndex={state.currentMonthIndex}
+                monthRecord={state.history[state.history.length - 1]}
+                interestEarned={interestEarned}
+                interestAccrued={interestAccrued}
+                aiFeedback={state.aiFeedback}
+                isAILoading={state.isAILoading}
+                onNextMonth={handleNextMonth}
+                isYearEnd={state.currentMonthIndex === 11}
+              />
+            </motion.div>
+          )}
+
+          {state.gamePhase === "YEAR_SUMMARY" && state.character && (
+            <motion.div
+              key="summary"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <YearSummary
+                character={state.character}
+                history={state.history}
+                netWorthHistory={state.netWorthHistory}
+                onRestart={handleReset}
+                onOpenSpeedrunner={() => setShowSpeedrunner(true)}
+              />
+            </motion.div>
+          )}
+
+          {state.gamePhase === "GAME_OVER" && state.character && (
+            <motion.div
+              key="game_over"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <GameOverScreen
+                character={state.character}
+                monthIndex={state.currentMonthIndex}
+                balance={state.balance}
+                savings={state.savings}
+                debt={state.debt}
+                stress={state.stress}
+                onRestart={handleReset}
+              />
+            </motion.div>
+          )}
+
+        </AnimatePresence>
+      </main>
+
+      {/* Speedrunner Projections Engine overlay modal */}
+      <AnimatePresence>
+        {showSpeedrunner && state.character && (
+          <LifeSpeedrunner
+            character={state.character}
+            currentBalance={state.balance}
+            currentSavings={state.savings}
+            currentDebt={state.debt}
+            onClose={() => setShowSpeedrunner(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Rescue and rewards feedback popups */}
+      <AnimatePresence>
+        {rescueMessage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white border border-gray-150 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl relative"
+            >
+              <span className="text-4xl block mb-2 filter drop-shadow-xs">🩹</span>
+              <h3 className="font-sans font-extrabold text-gray-950 text-base mb-2">{rescueMessage.title}</h3>
+              <p className="text-xs text-gray-500 mb-5 leading-relaxed">{rescueMessage.desc}</p>
+              <button
+                onClick={() => setRescueMessage(null)}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-sans font-bold text-xs py-3 rounded-xl cursor-pointer transition-colors"
+              >
+                Continue Simulating
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {earnedLifeMessage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white border border-emerald-100 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl relative"
+            >
+              <span className="text-4xl block mb-2 filter drop-shadow-xs">⭐</span>
+              <h3 className="font-sans font-extrabold text-emerald-800 text-base mb-2">MaliGo Savings Reward!</h3>
+              <p className="text-xs text-gray-500 mb-5 leading-relaxed">{earnedLifeMessage}</p>
+              <button
+                onClick={() => setEarnedLifeMessage(null)}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-sans font-bold text-xs py-3 rounded-xl cursor-pointer transition-colors"
+              >
+                Claim Heart Reward ❤️
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Humble Footer */}
+      <footer className="bg-slate-950 text-slate-500 py-6 text-center text-xs border-t border-slate-900 mt-12">
+        <p className="font-mono">© 2026 MaliGo Financial Maze Simulator. Built with Google Gemini AI models.</p>
+        <p className="text-slate-600 mt-1">Simulate choices, compound assets, conquer debt. Play safe, live rich.</p>
+      </footer>
+
+    </div>
+  );
+}
