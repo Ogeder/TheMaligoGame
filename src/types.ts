@@ -19,6 +19,9 @@ export interface Character {
   baseGroceries: number;
   baseBills: number;
   goals: string[];
+  perk?: string;
+  jetpackColor?: string;
+  avatarColor?: string;
 }
 
 export interface DecisionOption {

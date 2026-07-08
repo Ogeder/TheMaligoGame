@@ -409,7 +409,11 @@ export default function GameBoard({
             <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px] block">Legend</span>
             <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
               <div className="flex items-center gap-1.5">
-                <span className="text-lg">🦦</span>
+                {character.avatar.startsWith("/") || character.avatar.startsWith("http") ? (
+                  <img src={character.avatar} className="w-5 h-5 rounded-full object-cover border border-emerald-400 bg-white" referrerPolicy="no-referrer" alt="Mali" />
+                ) : (
+                  <span className="text-lg">{character.avatar}</span>
+                )}
                 <span>Your Meerkat</span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -522,9 +526,13 @@ export default function GameBoard({
                       {isPlayer && (
                         <motion.div
                           layoutId="meerkat-player"
-                          className="absolute inset-0 flex items-center justify-center text-xl sm:text-2xl z-10 filter drop-shadow-md"
+                          className="absolute inset-0 flex items-center justify-center z-10 filter drop-shadow-md p-1"
                         >
-                          {character.avatar}
+                          {character.avatar.startsWith("/") || character.avatar.startsWith("http") ? (
+                            <img src={character.avatar} className="w-full h-full rounded-full object-cover border border-emerald-400 bg-white" referrerPolicy="no-referrer" alt={character.name} />
+                          ) : (
+                            <span className="text-xl sm:text-2xl">{character.avatar}</span>
+                          )}
                         </motion.div>
                       )}
                     </div>

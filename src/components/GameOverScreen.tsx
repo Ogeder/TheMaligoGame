@@ -54,7 +54,11 @@ export default function GameOverScreen({
 
         {/* Character info */}
         <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex items-center gap-4 text-left mb-6">
-          <span className="text-4xl filter drop-shadow-sm select-none">{character.avatar}</span>
+          {character.avatar.startsWith("/") || character.avatar.startsWith("http") ? (
+            <img src={character.avatar} className="w-14 h-14 rounded-full object-cover border border-emerald-400 bg-white shadow-xs" referrerPolicy="no-referrer" alt={character.name} />
+          ) : (
+            <span className="text-4xl filter drop-shadow-sm select-none">{character.avatar}</span>
+          )}
           <div>
             <h3 className="font-sans font-bold text-sm text-gray-900">{character.name}</h3>
             <p className="text-xs text-gray-500 uppercase tracking-wider font-mono font-bold">{character.role}</p>

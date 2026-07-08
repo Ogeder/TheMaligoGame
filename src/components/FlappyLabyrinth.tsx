@@ -29,10 +29,26 @@ export default function FlappyLabyrinth({
   
   // Game States
   const [gameState, setGameState] = useState<"IDLE" | "PLAYING" | "GAMEOVER">("IDLE");
+  const [avatarImg, setAvatarImg] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    if (character.avatar && (character.avatar.startsWith("/") || character.avatar.startsWith("http"))) {
+      const img = new Image();
+      img.src = character.avatar;
+      img.onload = () => {
+        setAvatarImg(img);
+      };
+    } else {
+      setAvatarImg(null);
+    }
+  }, [character.avatar]);
+
   const [score, setScore] = useState(0);
   const [shardsCollected, setShardsCollected] = useState(0);
   const [coinsCollected, setCoinsCollected] = useState(0);
-  const [shields, setShields] = useState(1);
+  const [shields, setShields] = useState(() => {
+    return character.perk === "Shield Master" ? 2 : 1;
+  });
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [highScore, setHighScore] = useState(() => {
     return Number(localStorage.getItem("maligo_flappy_highscore") || "0");
@@ -78,7 +94,7 @@ export default function FlappyLabyrinth({
     score: 0,
     shards: 0,
     coins: 0,
-    shields: 1,
+    shields: character.perk === "Shield Master" ? 2 : 1,
     stressLevel: stress,
     scrollSpeed: 2.2, // Base speed
     backgroundOffset: 0,
@@ -229,12 +245,12 @@ export default function FlappyLabyrinth({
       game.score = 0;
       game.shards = 0;
       game.coins = 0;
-      game.shields = 1;
+      game.shields = character.perk === "Shield Master" ? 2 : 1;
       game.frameCount = 0;
       setScore(0);
       setShardsCollected(0);
       setCoinsCollected(0);
-      setShields(1);
+      setShields(character.perk === "Shield Master" ? 2 : 1);
     };
 
     const runLoop = () => {
@@ -291,7 +307,7 @@ export default function FlappyLabyrinth({
             y: game.player.y + (Math.random() * 8 - 4),
             vx: -game.scrollSpeed - (Math.random() * 1),
             vy: (Math.random() * 2 - 1),
-            color: game.shields > 0 ? "#f59e0b" : "#10b981", // orange particle if shielded, green if not
+            color: character.jetpackColor || (game.shields > 0 ? "#f59e0b" : "#10b981"), // orange particle if shielded, green if not
             alpha: 1,
             size: Math.random() * 4 + 2
           });
@@ -457,7 +473,8 @@ export default function FlappyLabyrinth({
               playSynthSound("COLLECT");
               
               if (item.type === "SHARD") {
-                game.shards += 4; // collect 4 shards
+                const bonus = character.perk === "Labyrinth Star" ? 6 : 4;
+                game.shards += bonus; // collect with perk modifier
                 setShardsCollected(game.shards);
               } else if (item.type === "COIN") {
                 game.coins += 25; // collect R25 coins
@@ -498,7 +515,7 @@ export default function FlappyLabyrinth({
 
       // Jetpack flame particle effects
       if (game.gameState === "PLAYING" && game.frameCount % 2 === 0) {
-        ctx.fillStyle = game.shields > 0 ? "#fbbf24" : "#34d399";
+        ctx.fillStyle = character.jetpackColor || (game.shields > 0 ? "#fbbf24" : "#34d399");
         ctx.beginPath();
         ctx.arc(-game.player.radius, 4, Math.random() * 6 + 1, 0, Math.PI * 2);
         ctx.fill();
@@ -513,11 +530,20 @@ export default function FlappyLabyrinth({
       ctx.fill();
       ctx.stroke();
 
-      // Inside text/emoji representing Meerkat Mali!
-      ctx.font = "19px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(character.avatar || "🦦", 0, 1); // draw the Meerkat avatar emoji!
+      // Inside text/emoji or custom image representing Meerkat Mali!
+      if (avatarImg) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0, 0, game.player.radius - 1.5, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(avatarImg, -game.player.radius, -game.player.radius, game.player.radius * 2, game.player.radius * 2);
+        ctx.restore();
+      } else {
+        ctx.font = "19px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(character.avatar || "🦦", 0, 1); // draw the Meerkat avatar emoji!
+      }
 
       // Draw active shield ring
       if (game.shields > 0) {
@@ -667,12 +693,12 @@ export default function FlappyLabyrinth({
     game.score = 0;
     game.shards = 0;
     game.coins = 0;
-    game.shields = 1;
+    game.shields = character.perk === "Shield Master" ? 2 : 1;
     game.frameCount = 0;
     setScore(0);
     setShardsCollected(0);
     setCoinsCollected(0);
-    setShields(1);
+    setShields(character.perk === "Shield Master" ? 2 : 1);
   };
 
   return (

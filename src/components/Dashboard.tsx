@@ -84,7 +84,11 @@ export default function Dashboard({
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-gray-100">
           {/* Character & Current Chapter */}
           <div className="flex items-center gap-3">
-            <span className="text-4xl filter drop-shadow-sm animate-pulse-slow">{character.avatar}</span>
+            {character.avatar.startsWith("/") || character.avatar.startsWith("http") ? (
+              <img src={character.avatar} className="w-12 h-12 rounded-full object-cover border-2 border-emerald-400 bg-white shadow-sm" referrerPolicy="no-referrer" alt={character.name} />
+            ) : (
+              <span className="text-4xl filter drop-shadow-sm animate-pulse-slow">{character.avatar}</span>
+            )}
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-sans font-bold text-gray-900 leading-tight">{character.name}</h2>

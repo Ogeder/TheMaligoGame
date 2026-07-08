@@ -76,10 +76,21 @@ export default function App() {
   const handleChoiceSelected = (option: DecisionOption) => {
     if (!state.character) return;
 
-    let newBalance = state.balance + option.balanceChange;
+    // Perk checks
+    let balanceChangeMod = option.balanceChange;
+    if (state.character.perk === "Thrifty Diet" && option.balanceChange < 0 && (option.text.toLowerCase().includes("grocer") || option.text.toLowerCase().includes("food") || option.text.toLowerCase().includes("meal"))) {
+      balanceChangeMod = Math.round(option.balanceChange * 0.8);
+    }
+
+    let stressChangeMod = option.stressChange;
+    if (state.character.perk === "Zen Mind" && option.stressChange > 0) {
+      stressChangeMod = Math.round(option.stressChange * 0.75);
+    }
+
+    let newBalance = state.balance + balanceChangeMod;
     let newSavings = state.savings + option.savingsChange;
     let newDebt = state.debt + option.debtChange;
-    let newStress = Math.max(0, Math.min(100, state.stress + option.stressChange));
+    let newStress = Math.max(0, Math.min(100, state.stress + stressChangeMod));
 
     // Real-world Cash Crisis Solver
     // If Cash Balance goes negative:
@@ -165,6 +176,11 @@ export default function App() {
     if (nextEventIndex >= currentScenarios.length) {
       // MONTH COMPLETED - Trigger month-end ledger sweep & interest compounding
       
+      // Side Hustler perk quarterly cash dividend
+      if (state.character.perk === "Side Hustler" && (state.currentMonthIndex === 2 || state.currentMonthIndex === 5 || state.currentMonthIndex === 8 || state.currentMonthIndex === 11)) {
+        newBalance += 300;
+      }
+
       // A. Automatic Payday Savings Sweep
       // Leave a small cash buffer for the month, sweep remaining surplus to compounding savings
       let cashBuffer = 300; // default student
