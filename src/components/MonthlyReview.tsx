@@ -207,7 +207,7 @@ export default function MonthlyReview({
                   </span>
                   <div>
                     <h3 className="text-sm font-bold font-sans tracking-wide">MaliGo Financial Coach</h3>
-                    <p className="text-[10px] text-emerald-400 font-mono">Gemini AI Wealth Advisor</p>
+                    <p className="text-[10px] text-emerald-400 font-mono">MaliGo AI Wealth Advisor</p>
                   </div>
                 </div>
                 <span className="text-[10px] bg-slate-800 text-slate-300 font-mono px-2 py-0.5 rounded border border-slate-700">
@@ -227,7 +227,7 @@ export default function MonthlyReview({
                       </div>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-200">Coach Gemini is analyzing your balance sheets...</p>
+                      <p className="text-sm font-bold text-slate-200">MaliGo Coach is analyzing your balance sheets...</p>
                       <p className="text-xs text-slate-400">Synthesizing real-world wealth strategies</p>
                     </div>
                   </div>

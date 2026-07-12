@@ -9,8 +9,10 @@ import YearSummary from "./components/YearSummary";
 import LifeSpeedrunner from "./components/LifeSpeedrunner";
 import GameOverScreen from "./components/GameOverScreen";
 import FlappyLabyrinth from "./components/FlappyLabyrinth";
-import { Compass, Coins, Sparkles, TrendingUp, AlertTriangle, Heart, RefreshCw, Star } from "lucide-react";
+import { Compass, Coins, Sparkles, TrendingUp, AlertTriangle, Heart, RefreshCw, Star, Trophy } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { UserStats, Achievement, ACHIEVEMENTS_LIST, getStatForAchievement, INITIAL_USER_STATS } from "./data/achievements";
+import AchievementsPanel from "./components/AchievementsPanel";
 
 const INITIAL_STATE: GameState = {
   character: null,
@@ -45,6 +47,104 @@ export default function App() {
   const [interestEarned, setInterestEarned] = useState<number>(0);
   const [interestAccrued, setInterestAccrued] = useState<number>(0);
 
+  // Achievements Persistent State
+  const [userStats, setUserStats] = useState<UserStats>(() => {
+    try {
+      const saved = localStorage.getItem("maligo_user_stats");
+      if (saved) {
+        return { ...INITIAL_USER_STATS, ...JSON.parse(saved) };
+      }
+    } catch (e) {
+      console.error("Failed to load user stats:", e);
+    }
+    return INITIAL_USER_STATS;
+  });
+
+  const [newlyUnlockedIds, setNewlyUnlockedIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("maligo_new_achievements");
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  const [showAchievements, setShowAchievements] = useState<boolean>(false);
+  const [activeAchievementToast, setActiveAchievementToast] = useState<Achievement | null>(null);
+  const [streakLowStress, setStreakLowStress] = useState<number>(0);
+
+  const updateStats = (updater: (prev: UserStats) => UserStats) => {
+    setUserStats(prev => {
+      const updated = updater(prev);
+      try {
+        localStorage.setItem("maligo_user_stats", JSON.stringify(updated));
+      } catch (e) {}
+
+      // Check unlocks
+      const newlyUnlocked: string[] = [];
+      const unlockedKey = "maligo_unlocked_ach_ids";
+      let savedUnlocked: string[] = [];
+      try {
+        const raw = localStorage.getItem(unlockedKey);
+        if (raw) savedUnlocked = JSON.parse(raw);
+      } catch (e) {}
+
+      ACHIEVEMENTS_LIST.forEach(ach => {
+        const currentVal = getStatForAchievement(ach.id, updated);
+        const isCompleted = currentVal >= ach.target;
+
+        if (isCompleted && !savedUnlocked.includes(ach.id)) {
+          newlyUnlocked.push(ach.id);
+          savedUnlocked.push(ach.id);
+          try {
+            localStorage.setItem(unlockedKey, JSON.stringify(savedUnlocked));
+          } catch (e) {}
+
+          // Display gorgeous toast notification
+          setActiveAchievementToast(ach);
+          setTimeout(() => {
+            setActiveAchievementToast(null);
+          }, 5000);
+        }
+      });
+
+      if (newlyUnlocked.length > 0) {
+        setNewlyUnlockedIds(prevNew => {
+          const nextNew = [...Array.from(new Set([...prevNew, ...newlyUnlocked]))];
+          try {
+            localStorage.setItem("maligo_new_achievements", JSON.stringify(nextNew));
+          } catch (e) {}
+          return nextNew;
+        });
+      }
+
+      return updated;
+    });
+  };
+
+  const handleClearNewStatus = (id: string) => {
+    setNewlyUnlockedIds(prev => {
+      const next = prev.filter(x => x !== id);
+      try {
+        localStorage.setItem("maligo_new_achievements", JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const handleResetAchievements = () => {
+    try {
+      localStorage.removeItem("maligo_user_stats");
+      localStorage.removeItem("maligo_new_achievements");
+      localStorage.removeItem("maligo_unlocked_ach_ids");
+    } catch (e) {}
+    setUserStats(INITIAL_USER_STATS);
+    setNewlyUnlockedIds([]);
+    setStreakLowStress(0);
+    setActiveAchievementToast(null);
+  };
+
   // 1. Select Character & Start Game
   const handleSelectCharacter = (char: Character) => {
     // Starting balances
@@ -70,6 +170,15 @@ export default function App() {
     setMonthStartSavings(initialSavings);
     setMonthStartDebt(initialDebt);
     setCurrentChoices([]);
+
+    // Update Achievements stats for character selected
+    updateStats(prev => ({
+      ...prev,
+      charactersPlayed: Array.from(new Set([...prev.charactersPlayed, char.id])),
+      accumulatedCash: Math.max(prev.accumulatedCash, netStartBalance),
+      totalSavingsAmassed: Math.max(prev.totalSavingsAmassed, initialSavings),
+      highestNetWorth: Math.max(prev.highestNetWorth, netStartBalance + initialSavings - initialDebt)
+    }));
   };
 
   // 2. Handle Decision Selection
@@ -172,6 +281,8 @@ export default function App() {
     setCurrentChoices(updatedChoices);
 
     const nextEventIndex = state.currentEventIndex + 1;
+    let sweptToSavings = 0;
+    let nextLives = finalLives;
 
     if (nextEventIndex >= currentScenarios.length) {
       // MONTH COMPLETED - Trigger month-end ledger sweep & interest compounding
@@ -190,7 +301,6 @@ export default function App() {
         cashBuffer = 1000;
       }
 
-      let sweptToSavings = 0;
       if (newBalance > cashBuffer) {
         sweptToSavings = newBalance - cashBuffer;
         newSavings += sweptToSavings;
@@ -199,7 +309,6 @@ export default function App() {
 
       // Check for High Savings Reward (+1 life, capped at 3)
       const targetSavingsRate = Math.round(state.character.baseIncome * 0.15);
-      let nextLives = finalLives;
       if (sweptToSavings >= targetSavingsRate) {
         if (finalLives < 3) {
           nextLives = finalLives + 1;
@@ -274,6 +383,47 @@ export default function App() {
         currentEventIndex: nextEventIndex
       }));
     }
+
+    // Update achievements stats
+    updateStats(prev => {
+      const extraThrifty = (option.balanceChange >= 0 || option.savingsChange > 0 || option.debtChange < 0) ? 1 : 0;
+      const extraDebtRepaid = option.debtChange < 0 ? Math.abs(option.debtChange) : 0;
+
+      let extraSweeps = 0;
+      let extraLowStress = 0;
+      let nextNoLossCount = prev.monthsCompletedNoLoss;
+
+      if (nextEventIndex >= currentScenarios.length) {
+        if (sweptToSavings > 0) {
+          extraSweeps = 1;
+        }
+        if (finalStress < 30) {
+          extraLowStress = 1;
+        }
+        if (nextLives < state.lives) {
+          nextNoLossCount = 0;
+        } else {
+          nextNoLossCount = Math.min(12, nextNoLossCount + 1);
+        }
+      }
+
+      const endBal = Math.round(newBalance);
+      const endSav = Math.round(newSavings);
+      const endDeb = Math.round(finalDebt);
+      const nw = endBal + endSav - endDeb;
+
+      return {
+        ...prev,
+        accumulatedCash: Math.max(prev.accumulatedCash, endBal),
+        totalSavingsAmassed: Math.max(prev.totalSavingsAmassed, endSav),
+        totalDebtRepaid: prev.totalDebtRepaid + extraDebtRepaid,
+        totalThriftyChoices: prev.totalThriftyChoices + extraThrifty,
+        highestNetWorth: Math.max(prev.highestNetWorth, nw),
+        totalSweepsCompleted: prev.totalSweepsCompleted + extraSweeps,
+        monthsWithLowStress: prev.monthsWithLowStress + extraLowStress,
+        monthsCompletedNoLoss: nextNoLossCount
+      };
+    });
   };
 
   // Helper helper to get type references cleanly
@@ -334,6 +484,10 @@ export default function App() {
       setState(prev => ({
         ...prev,
         gamePhase: "YEAR_SUMMARY"
+      }));
+      updateStats(prev => ({
+        ...prev,
+        yearsFinished: prev.yearsFinished + 1
       }));
       return;
     }
@@ -483,12 +637,27 @@ export default function App() {
                   currentDebt={state.debt}
                   stress={state.stress}
                   onGameRewardsGranted={(rewards) => {
-                    setState(prev => ({
-                      ...prev,
-                      balance: Math.round(prev.balance + rewards.coinsEarned),
-                      savings: Math.round(prev.savings + rewards.shardsEarned * 10),
-                      stress: Math.max(0, prev.stress - rewards.stressRelieved)
-                    }));
+                    setState(prev => {
+                      const finalBal = Math.round(prev.balance + rewards.coinsEarned);
+                      const finalSav = Math.round(prev.savings + rewards.shardsEarned * 10);
+                      const nw = finalBal + finalSav - prev.debt;
+
+                      updateStats(stats => ({
+                        ...stats,
+                        totalShardsCollected: stats.totalShardsCollected + rewards.shardsEarned,
+                        highestFlappyScore: Math.max(stats.highestFlappyScore, rewards.shardsEarned),
+                        accumulatedCash: Math.max(stats.accumulatedCash, finalBal),
+                        totalSavingsAmassed: Math.max(stats.totalSavingsAmassed, finalSav),
+                        highestNetWorth: Math.max(stats.highestNetWorth, nw)
+                      }));
+
+                      return {
+                        ...prev,
+                        balance: finalBal,
+                        savings: finalSav,
+                        stress: Math.max(0, prev.stress - rewards.stressRelieved)
+                      };
+                    });
                     setShowFlappyGame(false);
                   }}
                   onBack={() => setShowFlappyGame(false)}
@@ -508,6 +677,8 @@ export default function App() {
                     onReset={handleReset}
                     onOpenSpeedrunner={() => setShowSpeedrunner(true)}
                     onOpenFlappyGame={() => setShowFlappyGame(true)}
+                    onOpenAchievements={() => setShowAchievements(true)}
+                    newAchievementsCount={newlyUnlockedIds.length}
                   />
                   <GameBoard
                     character={state.character}
@@ -664,7 +835,58 @@ export default function App() {
             currentSavings={state.savings}
             currentDebt={state.debt}
             onClose={() => setShowSpeedrunner(false)}
+            onSimulationRun={() => {
+              updateStats(prev => ({
+                ...prev,
+                chronoMirrorSimulations: prev.chronoMirrorSimulations + 1
+              }));
+            }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Achievements Overlay Modal */}
+      <AnimatePresence>
+        {showAchievements && (
+          <AchievementsPanel
+            userStats={userStats}
+            newlyUnlockedIds={newlyUnlockedIds}
+            onClearNewStatus={handleClearNewStatus}
+            onResetStats={handleResetAchievements}
+            onClose={() => setShowAchievements(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Toast Notification for newly unlocked achievement */}
+      <AnimatePresence>
+        {activeAchievementToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white rounded-2xl p-4 shadow-2xl border border-amber-500 max-w-sm flex items-start gap-3.5 cursor-pointer"
+            onClick={() => {
+              setShowAchievements(true);
+              setActiveAchievementToast(null);
+            }}
+          >
+            <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-2xl flex-shrink-0 animate-pulse">
+              {activeAchievementToast.badgeIcon}
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-[10px] uppercase font-mono font-bold tracking-widest text-amber-500">Achievement Unlocked!</span>
+              </div>
+              <h4 className="font-sans font-extrabold text-xs text-white leading-tight">
+                {activeAchievementToast.name}
+              </h4>
+              <p className="text-[11px] text-slate-300 mt-1 leading-snug font-sans">
+                {activeAchievementToast.desc}
+              </p>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -725,7 +947,7 @@ export default function App() {
 
       {/* Humble Footer */}
       <footer className="bg-slate-950 text-slate-500 py-6 text-center text-xs border-t border-slate-900 mt-12">
-        <p className="font-mono">© 2026 MaliGo Financial Maze Simulator. Built with Google Gemini AI models.</p>
+        <p className="font-mono">© 2026 MaliGo Financial Maze Simulator. Powered by MaliGo Financial Intelligence.</p>
         <p className="text-slate-600 mt-1">Simulate choices, compound assets, conquer debt. Play safe, live rich.</p>
       </footer>
 

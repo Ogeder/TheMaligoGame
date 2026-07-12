@@ -9,6 +9,7 @@ interface LifeSpeedrunnerProps {
   currentSavings: number;
   currentDebt: number;
   onClose: () => void;
+  onSimulationRun?: () => void;
 }
 
 export default function LifeSpeedrunner({
@@ -16,7 +17,8 @@ export default function LifeSpeedrunner({
   currentBalance,
   currentSavings,
   currentDebt,
-  onClose
+  onClose,
+  onSimulationRun
 }: LifeSpeedrunnerProps) {
   const [monthsToProject, setMonthsToProject] = useState<number>(24);
   const [monthlySavingsInput, setMonthlySavingsInput] = useState<number>(
@@ -136,6 +138,7 @@ export default function LifeSpeedrunner({
     setAiGrade(null);
     setAiMilestones([]);
     setAiError(null);
+    onSimulationRun?.();
 
     if (simulationMode === "AI") {
       setIsAiLoading(true);
@@ -271,7 +274,7 @@ export default function LifeSpeedrunner({
             <Sparkles className="w-4 h-4 text-emerald-600 animate-bounce-slow" />
             <div className="text-left">
               <span className="text-xs font-bold text-slate-900 block leading-tight">Chrono-Mirror Oracle Model</span>
-              <span className="text-[10px] text-slate-500">Peer through static maze math or invoke the Gemini Labyrinth Spirit Oracle.</span>
+              <span className="text-[10px] text-slate-500">Peer through static maze math or invoke the MaliGo Labyrinth Spirit Oracle.</span>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-1 bg-white p-1 rounded-xl border border-slate-200 w-full sm:w-auto">
@@ -289,7 +292,7 @@ export default function LifeSpeedrunner({
                 simulationMode === "AI" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50"
               }`}
             >
-              ✨ Gemini Labyrinth Oracle
+              ✨ MaliGo Labyrinth Oracle
             </button>
           </div>
         </div>
@@ -299,7 +302,7 @@ export default function LifeSpeedrunner({
           <div className="bg-emerald-50/50 border border-emerald-100/50 rounded-2xl px-4 py-2.5 mb-5 flex items-center gap-2">
             <span className="text-xs">✨</span>
             <span className="text-[10px] text-emerald-800 font-medium">
-              The Gemini Labyrinth Oracle will weave unexpected events (stokvel rewards, device breakdowns, bonuses) into your journey.
+              The MaliGo Labyrinth Oracle will weave unexpected events (stokvel rewards, device breakdowns, bonuses) into your journey.
             </span>
           </div>
         )}

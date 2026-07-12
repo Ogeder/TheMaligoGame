@@ -17,6 +17,8 @@ interface DashboardProps {
   onReset: () => void;
   onOpenSpeedrunner?: () => void;
   onOpenFlappyGame?: () => void;
+  onOpenAchievements?: () => void;
+  newAchievementsCount?: number;
 }
 
 export default function Dashboard({
@@ -31,7 +33,9 @@ export default function Dashboard({
   lives,
   onReset,
   onOpenSpeedrunner,
-  onOpenFlappyGame
+  onOpenFlappyGame,
+  onOpenAchievements,
+  newAchievementsCount = 0
 }: DashboardProps) {
   const currentMonthName = MONTHS[monthIndex].name;
   const currentMonthTheme = MONTHS[monthIndex].theme;
@@ -132,6 +136,21 @@ export default function Dashboard({
                 title="Play Chrono-Flap Labyrinth"
               >
                 <span>🕹️ Play Flappy Labyrinth</span>
+              </button>
+            )}
+
+            {onOpenAchievements && (
+              <button
+                onClick={onOpenAchievements}
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-sans font-extrabold text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer border border-amber-300 relative"
+                title="Open MaliGo Achievements"
+              >
+                <span>🏆 Achievements</span>
+                {newAchievementsCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white font-mono font-bold text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center border border-white animate-bounce shadow-md">
+                    {newAchievementsCount}
+                  </span>
+                )}
               </button>
             )}
 
