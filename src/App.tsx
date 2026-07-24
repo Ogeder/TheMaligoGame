@@ -9,6 +9,10 @@ import YearSummary from "./components/YearSummary";
 import LifeSpeedrunner from "./components/LifeSpeedrunner";
 import GameOverScreen from "./components/GameOverScreen";
 import FlappyLabyrinth from "./components/FlappyLabyrinth";
+import BounceGame from "./components/BounceGame";
+import StackHighGame from "./components/StackHighGame";
+import TapMaliGame from "./components/TapMaliGame";
+import DealSlicerGame from "./components/DealSlicerGame";
 import { Compass, Coins, Sparkles, TrendingUp, AlertTriangle, Heart, RefreshCw, Star, Trophy } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { UserStats, Achievement, ACHIEVEMENTS_LIST, getStatForAchievement, INITIAL_USER_STATS } from "./data/achievements";
@@ -42,6 +46,14 @@ export default function App() {
   const [earnedLifeMessage, setEarnedLifeMessage] = useState<string | null>(null);
   const [showSpeedrunner, setShowSpeedrunner] = useState<boolean>(false);
   const [showFlappyGame, setShowFlappyGame] = useState<boolean>(false);
+  const [showBounceGame, setShowBounceGame] = useState<boolean>(false);
+  const [showStackGame, setShowStackGame] = useState<boolean>(false);
+  const [showTapMaliGame, setShowTapMaliGame] = useState<boolean>(false);
+  const [showDealSlicerGame, setShowDealSlicerGame] = useState<boolean>(false);
+
+  const [unlockedGameType, setUnlockedGameType] = useState<"BOUNCE" | "STACK" | "TAP_MALI" | "SLICER" | null>(null);
+  const [hasBounceGameUnlocked, setHasBounceGameUnlocked] = useState<boolean>(false);
+  const [bounceUnlockMessage, setBounceUnlockMessage] = useState<string | null>(null);
 
   // Compound calculations records
   const [interestEarned, setInterestEarned] = useState<number>(0);
@@ -258,6 +270,30 @@ export default function App() {
         gamePhase: "GAME_OVER"
       }));
       return;
+    }
+
+    // Check if this choice was a proper nice financial decision
+    const isNiceFinancialDecision = 
+      option.savingsChange > 0 || 
+      option.debtChange < 0 || 
+      (option.balanceChange + option.savingsChange - option.debtChange > 0) ||
+      (option.stressChange < 0 && option.balanceChange >= 0);
+
+    if (isNiceFinancialDecision) {
+      setHasBounceGameUnlocked(true);
+      const games: ("BOUNCE" | "STACK" | "TAP_MALI" | "SLICER")[] = ["STACK", "TAP_MALI", "SLICER", "BOUNCE"];
+      const chosenGame = games[Math.floor(Math.random() * games.length)];
+      setUnlockedGameType(chosenGame);
+
+      if (chosenGame === "STACK") {
+        setBounceUnlockMessage(`✨ Proper Financial Decision! Wealth Tower Stack mini-game unlocked! Build your financial skyscraper! 🏢`);
+      } else if (chosenGame === "TAP_MALI") {
+        setBounceUnlockMessage(`✨ Wise Choice! Tap Mali Meerkat & Friends mini-game unlocked! Tap savers, dodge debt sharks! 🦦`);
+      } else if (chosenGame === "SLICER") {
+        setBounceUnlockMessage(`✨ Great Financial Strategy! Deal Slicer mini-game unlocked! Slice high-yield deals & discount vouchers! ✂️`);
+      } else {
+        setBounceUnlockMessage(`✨ Excellent Decision! MaliGo Bounce Blitz unlocked! Bounce off your wealth shield for cash! ⚽`);
+      }
     }
 
     // Record the choices made for AI feedback and ledger
@@ -677,8 +713,34 @@ export default function App() {
                     onReset={handleReset}
                     onOpenSpeedrunner={() => setShowSpeedrunner(true)}
                     onOpenFlappyGame={() => setShowFlappyGame(true)}
+                    onOpenBounceGame={() => {
+                      setShowBounceGame(true);
+                      setHasBounceGameUnlocked(false);
+                      setUnlockedGameType(null);
+                      setBounceUnlockMessage(null);
+                    }}
+                    onOpenStackGame={() => {
+                      setShowStackGame(true);
+                      setHasBounceGameUnlocked(false);
+                      setUnlockedGameType(null);
+                      setBounceUnlockMessage(null);
+                    }}
+                    onOpenTapMaliGame={() => {
+                      setShowTapMaliGame(true);
+                      setHasBounceGameUnlocked(false);
+                      setUnlockedGameType(null);
+                      setBounceUnlockMessage(null);
+                    }}
+                    onOpenDealSlicerGame={() => {
+                      setShowDealSlicerGame(true);
+                      setHasBounceGameUnlocked(false);
+                      setUnlockedGameType(null);
+                      setBounceUnlockMessage(null);
+                    }}
                     onOpenAchievements={() => setShowAchievements(true)}
                     newAchievementsCount={newlyUnlockedIds.length}
+                    hasBounceGameUnlocked={hasBounceGameUnlocked}
+                    unlockedGameType={unlockedGameType}
                   />
                   <GameBoard
                     character={state.character}
@@ -826,6 +888,138 @@ export default function App() {
         </AnimatePresence>
       </main>
 
+      {/* Bounce Blitz Game Overlay Modal */}
+      <AnimatePresence>
+        {showBounceGame && state.character && (
+          <BounceGame
+            character={state.character}
+            currentBalance={state.balance}
+            currentSavings={state.savings}
+            currentDebt={state.debt}
+            stress={state.stress}
+            onGameRewardsGranted={(rewards) => {
+              setState(prev => {
+                const finalBal = Math.round(prev.balance + rewards.coinsEarned);
+                const finalSav = Math.round(prev.savings + rewards.shardsEarned);
+                const nw = finalBal + finalSav - prev.debt;
+
+                updateStats(stats => ({
+                  ...stats,
+                  accumulatedCash: Math.max(stats.accumulatedCash, finalBal),
+                  totalSavingsAmassed: Math.max(stats.totalSavingsAmassed, finalSav),
+                  highestNetWorth: Math.max(stats.highestNetWorth, nw)
+                }));
+
+                return {
+                  ...prev,
+                  balance: finalBal,
+                  savings: finalSav,
+                  stress: Math.max(0, prev.stress - rewards.stressRelieved)
+                };
+              });
+              setShowBounceGame(false);
+            }}
+            onBack={() => setShowBounceGame(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Stack High Wealth Tower Game Modal */}
+      <AnimatePresence>
+        {showStackGame && state.character && (
+          <StackHighGame
+            character={state.character}
+            onGameRewardsGranted={(rewards) => {
+              setState(prev => {
+                const finalBal = Math.round(prev.balance + rewards.coinsEarned);
+                const finalSav = Math.round(prev.savings + rewards.shardsEarned);
+                const nw = finalBal + finalSav - prev.debt;
+
+                updateStats(stats => ({
+                  ...stats,
+                  accumulatedCash: Math.max(stats.accumulatedCash, finalBal),
+                  totalSavingsAmassed: Math.max(stats.totalSavingsAmassed, finalSav),
+                  highestNetWorth: Math.max(stats.highestNetWorth, nw)
+                }));
+
+                return {
+                  ...prev,
+                  balance: finalBal,
+                  savings: finalSav,
+                  stress: Math.max(0, prev.stress - rewards.stressRelieved)
+                };
+              });
+              setShowStackGame(false);
+            }}
+            onBack={() => setShowStackGame(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Tap Mali Meerkat Game Modal */}
+      <AnimatePresence>
+        {showTapMaliGame && state.character && (
+          <TapMaliGame
+            character={state.character}
+            onGameRewardsGranted={(rewards) => {
+              setState(prev => {
+                const finalBal = Math.round(prev.balance + rewards.coinsEarned);
+                const finalSav = Math.round(prev.savings + rewards.shardsEarned);
+                const nw = finalBal + finalSav - prev.debt;
+
+                updateStats(stats => ({
+                  ...stats,
+                  accumulatedCash: Math.max(stats.accumulatedCash, finalBal),
+                  totalSavingsAmassed: Math.max(stats.totalSavingsAmassed, finalSav),
+                  highestNetWorth: Math.max(stats.highestNetWorth, nw)
+                }));
+
+                return {
+                  ...prev,
+                  balance: finalBal,
+                  savings: finalSav,
+                  stress: Math.max(0, prev.stress - rewards.stressRelieved)
+                };
+              });
+              setShowTapMaliGame(false);
+            }}
+            onBack={() => setShowTapMaliGame(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Deal Slicer Game Modal */}
+      <AnimatePresence>
+        {showDealSlicerGame && state.character && (
+          <DealSlicerGame
+            character={state.character}
+            onGameRewardsGranted={(rewards) => {
+              setState(prev => {
+                const finalBal = Math.round(prev.balance + rewards.coinsEarned);
+                const finalSav = Math.round(prev.savings + rewards.shardsEarned);
+                const nw = finalBal + finalSav - prev.debt;
+
+                updateStats(stats => ({
+                  ...stats,
+                  accumulatedCash: Math.max(stats.accumulatedCash, finalBal),
+                  totalSavingsAmassed: Math.max(stats.totalSavingsAmassed, finalSav),
+                  highestNetWorth: Math.max(stats.highestNetWorth, nw)
+                }));
+
+                return {
+                  ...prev,
+                  balance: finalBal,
+                  savings: finalSav,
+                  stress: Math.max(0, prev.stress - rewards.stressRelieved)
+                };
+              });
+              setShowDealSlicerGame(false);
+            }}
+            onBack={() => setShowDealSlicerGame(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Speedrunner Projections Engine overlay modal */}
       <AnimatePresence>
         {showSpeedrunner && state.character && (
@@ -941,6 +1135,51 @@ export default function App() {
                 Claim Heart Reward ❤️
               </button>
             </motion.div>
+          </motion.div>
+        )}
+
+        {bounceUnlockMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed bottom-6 left-6 z-50 bg-teal-950 text-white rounded-2xl p-4 shadow-2xl border border-teal-400 max-w-sm flex items-start gap-3.5"
+          >
+            <div className="w-12 h-12 rounded-xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-2xl flex-shrink-0 animate-bounce">
+              {unlockedGameType === "STACK" ? "🏢" : unlockedGameType === "TAP_MALI" ? "🦦" : unlockedGameType === "SLICER" ? "✂️" : "⚽"}
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span className="text-[10px] uppercase font-mono font-extrabold text-amber-300">Wise Choice Reward!</span>
+              </div>
+              <p className="text-xs text-teal-100 font-sans leading-snug font-medium mb-2">
+                {bounceUnlockMessage}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (unlockedGameType === "STACK") setShowStackGame(true);
+                    else if (unlockedGameType === "TAP_MALI") setShowTapMaliGame(true);
+                    else if (unlockedGameType === "SLICER") setShowDealSlicerGame(true);
+                    else setShowBounceGame(true);
+
+                    setBounceUnlockMessage(null);
+                    setHasBounceGameUnlocked(false);
+                    setUnlockedGameType(null);
+                  }}
+                  className="bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-all flex items-center gap-1 shadow-sm"
+                >
+                  Play {unlockedGameType === "STACK" ? "Stack High 🏢" : unlockedGameType === "TAP_MALI" ? "Tap Mali 🦦" : unlockedGameType === "SLICER" ? "Deal Slicer ✂️" : "Bounce Blitz ⚽"}
+                </button>
+                <button
+                  onClick={() => setBounceUnlockMessage(null)}
+                  className="text-teal-300 hover:text-white text-xs px-2 py-1.5 cursor-pointer font-bold"
+                >
+                  Later
+                </button>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

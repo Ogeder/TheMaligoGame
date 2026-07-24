@@ -17,8 +17,14 @@ interface DashboardProps {
   onReset: () => void;
   onOpenSpeedrunner?: () => void;
   onOpenFlappyGame?: () => void;
+  onOpenBounceGame?: () => void;
+  onOpenStackGame?: () => void;
+  onOpenTapMaliGame?: () => void;
+  onOpenDealSlicerGame?: () => void;
   onOpenAchievements?: () => void;
   newAchievementsCount?: number;
+  hasBounceGameUnlocked?: boolean;
+  unlockedGameType?: "BOUNCE" | "STACK" | "TAP_MALI" | "SLICER" | null;
 }
 
 export default function Dashboard({
@@ -34,8 +40,14 @@ export default function Dashboard({
   onReset,
   onOpenSpeedrunner,
   onOpenFlappyGame,
+  onOpenBounceGame,
+  onOpenStackGame,
+  onOpenTapMaliGame,
+  onOpenDealSlicerGame,
   onOpenAchievements,
-  newAchievementsCount = 0
+  newAchievementsCount = 0,
+  hasBounceGameUnlocked = false,
+  unlockedGameType = null
 }: DashboardProps) {
   const currentMonthName = MONTHS[monthIndex].name;
   const currentMonthTheme = MONTHS[monthIndex].theme;
@@ -132,10 +144,86 @@ export default function Dashboard({
             {onOpenFlappyGame && (
               <button
                 onClick={onOpenFlappyGame}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white font-sans font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer animate-pulse"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-sans font-bold text-xs px-3 py-2 rounded-xl transition-all flex items-center gap-1 shadow-sm cursor-pointer"
                 title="Play Chrono-Flap Labyrinth"
               >
-                <span>🕹️ Play Flappy Labyrinth</span>
+                <span>🕹️ Flappy</span>
+              </button>
+            )}
+
+            {onOpenBounceGame && (
+              <button
+                onClick={onOpenBounceGame}
+                className={`text-white font-sans font-bold text-xs px-3 py-2 rounded-xl transition-all flex items-center gap-1 shadow-sm cursor-pointer relative border ${
+                  unlockedGameType === "BOUNCE" || (hasBounceGameUnlocked && !unlockedGameType)
+                    ? "bg-teal-500 hover:bg-teal-400 border-teal-300 animate-pulse text-slate-950 font-extrabold"
+                    : "bg-teal-700 hover:bg-teal-600 border-teal-600 opacity-90"
+                }`}
+                title="Play MaliGo Bounce Blitz"
+              >
+                <span>⚽ Bounce</span>
+                {(unlockedGameType === "BOUNCE" || (hasBounceGameUnlocked && !unlockedGameType)) && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-amber-400 text-slate-950 font-mono font-black text-[8px] px-1 py-0.2 rounded-full border border-white animate-bounce shadow-md">
+                    NEW!
+                  </span>
+                )}
+              </button>
+            )}
+
+            {onOpenStackGame && (
+              <button
+                onClick={onOpenStackGame}
+                className={`text-white font-sans font-bold text-xs px-3 py-2 rounded-xl transition-all flex items-center gap-1 shadow-sm cursor-pointer relative border ${
+                  unlockedGameType === "STACK"
+                    ? "bg-amber-500 hover:bg-amber-400 border-amber-300 animate-pulse text-slate-950 font-extrabold"
+                    : "bg-amber-700 hover:bg-amber-600 border-amber-600 opacity-90"
+                }`}
+                title="Play Stack High Wealth Tower"
+              >
+                <span>🏢 Stack</span>
+                {unlockedGameType === "STACK" && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-amber-300 text-slate-950 font-mono font-black text-[8px] px-1 py-0.2 rounded-full border border-white animate-bounce shadow-md">
+                    NEW!
+                  </span>
+                )}
+              </button>
+            )}
+
+            {onOpenTapMaliGame && (
+              <button
+                onClick={onOpenTapMaliGame}
+                className={`text-white font-sans font-bold text-xs px-3 py-2 rounded-xl transition-all flex items-center gap-1 shadow-sm cursor-pointer relative border ${
+                  unlockedGameType === "TAP_MALI"
+                    ? "bg-emerald-500 hover:bg-emerald-400 border-emerald-300 animate-pulse text-slate-950 font-extrabold"
+                    : "bg-emerald-700 hover:bg-emerald-600 border-emerald-600 opacity-90"
+                }`}
+                title="Play Tap Mali the Meerkat & Friends"
+              >
+                <span>🦦 Tap Mali</span>
+                {unlockedGameType === "TAP_MALI" && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-amber-300 text-slate-950 font-mono font-black text-[8px] px-1 py-0.2 rounded-full border border-white animate-bounce shadow-md">
+                    NEW!
+                  </span>
+                )}
+              </button>
+            )}
+
+            {onOpenDealSlicerGame && (
+              <button
+                onClick={onOpenDealSlicerGame}
+                className={`text-white font-sans font-bold text-xs px-3 py-2 rounded-xl transition-all flex items-center gap-1 shadow-sm cursor-pointer relative border ${
+                  unlockedGameType === "SLICER"
+                    ? "bg-teal-400 hover:bg-teal-300 border-teal-200 animate-pulse text-slate-950 font-extrabold"
+                    : "bg-cyan-700 hover:bg-cyan-600 border-cyan-600 opacity-90"
+                }`}
+                title="Play Deal Slicer Fruit Ninja Style Cut"
+              >
+                <span>✂️ Slicer</span>
+                {unlockedGameType === "SLICER" && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-amber-300 text-slate-950 font-mono font-black text-[8px] px-1 py-0.2 rounded-full border border-white animate-bounce shadow-md">
+                    NEW!
+                  </span>
+                )}
               </button>
             )}
 
