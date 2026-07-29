@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { FinancialEvent, DecisionOption, Character } from "../types";
 import { 
@@ -7,7 +7,8 @@ import {
   Activity, Dumbbell, ShieldAlert, Package, 
   Globe, Users, PiggyBank, TrendingUp, Coins, 
   ChevronRight, Info, Eye, Shield, Coffee, Compass,
-  ArrowUp, ArrowDown, ArrowLeft, ArrowRight, AlertTriangle
+  Laptop, Tv, Armchair, Sun, Zap, Award, CheckCircle2,
+  AlertTriangle, Lock, Unlock, Flame, Gamepad2, Building
 } from "lucide-react";
 
 interface GameBoardProps {
@@ -24,60 +25,10 @@ interface GameBoardProps {
   onStatsChanged: (changes: { balance?: number; savings?: number; debt?: number; stress?: number; lives?: number }) => void;
 }
 
-// Map category icons to lucide React components
+// Category icon helper
 const iconMap: { [key: string]: React.ComponentType<any> } = {
   Home, ShoppingCart, BookOpen, PartyPopper, Bus, Heart, Wifi, Sparkles, Car, Palmtree, Activity, Dumbbell, ShieldAlert, Package, Globe, Users, PiggyBank, TrendingUp, Coins
 };
-
-// High-quality solvable 10x10 maze layouts
-const MAZE_LAYOUTS = [
-  [
-    [0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-    [1, 0, 0, 0, 1, 0, 0, 0, 1, 0],
-    [1, 1, 1, 0, 1, 1, 1, 0, 1, 0],
-    [0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-    [0, 1, 1, 1, 1, 0, 1, 1, 1, 0],
-    [0, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-    [0, 1, 0, 1, 1, 1, 1, 1, 1, 0],
-    [0, 0, 0, 1, 0, 0, 0, 0, 1, 0],
-    [1, 1, 0, 0, 0, 1, 1, 0, 0, 0]
-  ],
-  [
-    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-    [1, 1, 1, 0, 1, 0, 1, 1, 1, 0],
-    [0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-    [0, 1, 1, 1, 1, 1, 1, 0, 1, 1],
-    [0, 0, 0, 0, 1, 0, 0, 0, 1, 0],
-    [1, 1, 1, 0, 1, 0, 1, 0, 1, 0],
-    [0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-    [0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-    [0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
-    [0, 0, 0, 1, 1, 1, 1, 0, 0, 0]
-  ],
-  [
-    [0, 0, 1, 0, 0, 0, 0, 1, 0, 0],
-    [0, 1, 1, 0, 1, 1, 0, 1, 1, 0],
-    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-    [1, 1, 1, 1, 1, 0, 1, 1, 1, 1],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-    [0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
-    [0, 1, 0, 1, 1, 1, 1, 0, 1, 0],
-    [0, 0, 0, 1, 0, 0, 1, 0, 0, 0],
-    [1, 1, 0, 0, 0, 1, 1, 1, 1, 0]
-  ]
-];
-
-// Potential hazard cards in the Labyrinth
-const HAZARD_TYPES = [
-  { text: "Dorm pipe burst / Mobile charger cracked", type: "debt", change: 150 },
-  { text: "Predatory store card marketing pressure", type: "stress", change: 8 },
-  { text: "Taxi tariff spike / High commute delays", type: "debt", change: 100 },
-  { text: "Spilled coffee on textbook / work battery", type: "debt", change: 200 },
-  { text: "Urgent family grocery request", type: "debt", change: 150 },
-  { text: "Uncapped subscription automatic trial renewal", type: "stress", change: 10 }
-];
 
 export default function GameBoard({
   character,
@@ -92,612 +43,656 @@ export default function GameBoard({
   lives,
   onStatsChanged
 }: GameBoardProps) {
-  // Select active layout fixed for this month
-  const monthIdHash = event.id.split("_").pop() || "0";
-  const layoutIndex = Math.abs(parseInt(monthIdHash, 10) || 0) % MAZE_LAYOUTS.length;
-  const layout = MAZE_LAYOUTS[layoutIndex];
+  const [activeTab, setActiveTab] = useState<"PLACE" | "DECISION" | "VAULT" | "SHOP">("PLACE");
+  const [hasShield, setHasShield] = useState<boolean>(false);
+  const [hasSolarInverter, setHasSolarInverter] = useState<boolean>(false);
+  const [hasMoneyTree, setHasMoneyTree] = useState<boolean>(false);
+  const [hasSmartLaptop, setHasSmartLaptop] = useState<boolean>(false);
+  const [lastNotification, setLastNotification] = useState<string>("Welcome to your Personal Living Environment Universe!");
 
-  // Game board interactive states
-  const [playerPos, setPlayerPos] = useState({ x: 0, y: 0 });
-  const [chests, setChests] = useState<{ id: number; x: number; y: number; solved: boolean }[]>([]);
-  const [collectibles, setCollectibles] = useState<{ id: string; x: number; y: number; type: "coin" | "shard"; amount: number; collected: boolean }[]>([]);
-  const [hazards, setHazards] = useState<{ id: string; x: number; y: number; text: string; type: string; change: number; triggered: boolean }[]>([]);
-  
-  // Power-up active states
-  const [shieldsCount, setShieldsCount] = useState<number>(0);
-  const [hasVision, setHasVision] = useState<boolean>(false);
-  const [activeDilemmaOpen, setActiveDilemmaOpen] = useState<boolean>(false);
-  const [lastLog, setLastLog] = useState<string>("Use Arrow keys / WASD or buttons below to explore the Labyrinth!");
+  // Calculate Net Worth and Estate Rank
+  const netWorth = balance + savings - debt;
 
-  // Initialize/Reset Labyrinth state at the beginning of each new month (stepIndex === 0)
-  useEffect(() => {
-    if (stepIndex === 0) {
-      // Find all empty non-wall tiles excluding starting point (0,0)
-      const emptySlots: { x: number; y: number }[] = [];
-      for (let r = 0; r < 10; r++) {
-        for (let c = 0; c < 10; c++) {
-          if (layout[r][c] === 0 && !(r === 0 && c === 0)) {
-            emptySlots.push({ x: c, y: r });
-          }
-        }
-      }
-
-      // Quick helper to shuffle
-      const shuffled = [...emptySlots].sort(() => Math.random() - 0.5);
-
-      // 1. Place dilemma Chests (exactly totalSteps chests)
-      const newChests = shuffled.slice(0, totalSteps).map((pos, idx) => ({
-        id: idx,
-        x: pos.x,
-        y: pos.y,
-        solved: false
-      }));
-
-      // 2. Place Collectibles (Coins and Shards)
-      const newCollectibles = shuffled.slice(totalSteps, totalSteps + 5).map((pos, idx) => ({
-        id: `coll_${idx}`,
-        x: pos.x,
-        y: pos.y,
-        type: (idx % 2 === 0 ? "coin" : "shard") as "coin" | "shard",
-        amount: 50,
-        collected: false
-      }));
-
-      // 3. Place Hazard traps
-      const newHazards = shuffled.slice(totalSteps + 5, totalSteps + 9).map((pos, idx) => {
-        const hTemplate = HAZARD_TYPES[idx % HAZARD_TYPES.length];
-        return {
-          id: `haz_${idx}`,
-          x: pos.x,
-          y: pos.y,
-          text: hTemplate.text,
-          type: hTemplate.type,
-          change: hTemplate.change,
-          triggered: false
-        };
-      });
-
-      setPlayerPos({ x: 0, y: 0 });
-      setChests(newChests);
-      setCollectibles(newCollectibles);
-      setHazards(newHazards);
-      setShieldsCount(0);
-      setHasVision(false);
-      setActiveDilemmaOpen(false);
-      setLastLog(`🗺️ Entered Month #${parseInt(monthIdHash, 10) + 1} Labyrinth. Find and open all 3 scrolls!`);
-    } else {
-      // If advancing steps, mark the chest at the current player position as solved!
-      setChests(prev => 
-        prev.map(c => (c.x === playerPos.x && c.y === playerPos.y) ? { ...c, solved: true } : c)
-      );
-    }
-  }, [event.id, stepIndex]);
-
-  // Check collision with chests, coins, or hazards
-  const checkCollisions = (x: number, y: number) => {
-    // 1. Collectible coins/shards
-    const coll = collectibles.find(c => c.x === x && c.y === y && !c.collected);
-    if (coll) {
-      coll.collected = true;
-      setCollectibles([...collectibles]);
-      if (coll.type === "coin") {
-        onStatsChanged({ balance: coll.amount });
-        setLastLog(`💰 Found chest of Coins! +R${coll.amount} Available Coins added.`);
-      } else {
-        onStatsChanged({ savings: coll.amount });
-        setLastLog(`💎 Found glowing Wealth Shard! +R${coll.amount} Savings compounded.`);
-      }
-    }
-
-    // 2. Hazards/traps
-    const haz = hazards.find(h => h.x === x && h.y === y && !h.triggered);
-    if (haz) {
-      haz.triggered = true;
-      setHazards([...hazards]);
-      if (shieldsCount > 0) {
-        setShieldsCount(prev => prev - 1);
-        setLastLog(`🛡️ Debt Shield Spell absorbed the trap: "${haz.text}"! Saved!`);
-      } else {
-        if (haz.type === "debt") {
-          onStatsChanged({ balance: -haz.change });
-          setLastLog(`⚠️ Trap Triggered! "${haz.text}" (-R${haz.change} Coins)`);
-        } else {
-          onStatsChanged({ stress: haz.change });
-          setLastLog(`⚠️ Trap Triggered! "${haz.text}" (+${haz.change}% Stress)`);
-        }
-      }
-    }
-
-    // 3. Dilemma chests
-    const chest = chests.find(c => c.x === x && c.y === y && !c.solved);
-    if (chest) {
-      setActiveDilemmaOpen(true);
-    }
+  const getEstateRank = () => {
+    if (netWorth >= 35000) return { title: "Solar Eco Sanctuary", icon: "🏡", color: "from-emerald-600 to-teal-500", desc: "Luxury, zero-debt sustainable estate with solar power and high-yield investments." };
+    if (netWorth >= 15000) return { title: "Executive Tech Loft", icon: "🏙️", color: "from-blue-600 to-indigo-500", desc: "Sleek multi-monitor loft with automated budgeting systems." };
+    if (netWorth >= 5000) return { title: "Urban Town Apartment", icon: "🏢", color: "from-amber-600 to-orange-500", desc: "Cozy furnished residence with smart appliances and growing savings." };
+    return { title: "Starter Student Quarter", icon: "🏚️", color: "from-slate-700 to-slate-800", desc: "Modest studio apartment. The foundation of your financial journey!" };
   };
 
-  // Move function
-  const handleMove = (dx: number, dy: number) => {
-    if (activeDilemmaOpen) return; // ignore move when dilemma choice is active
+  const estate = getEstateRank();
 
-    const nextX = playerPos.x + dx;
-    const nextY = playerPos.y + dy;
-
-    // Check boundaries
-    if (nextX < 0 || nextX >= 10 || nextY < 0 || nextY >= 10) return;
-
-    // Check walls
-    if (layout[nextY][nextX] === 1) {
-      setLastLog("💥 Ouch! You bumped into a Labyrinth Wall.");
+  // Buy Environment Upgrades
+  const buyMoneyTree = () => {
+    if (balance < 120) {
+      setLastNotification("❌ Not enough cash to buy the Golden Money Tree! (R120 required)");
       return;
     }
-
-    setPlayerPos({ x: nextX, y: nextY });
-    checkCollisions(nextX, nextY);
+    onStatsChanged({ balance: -120, savings: 50 });
+    setHasMoneyTree(true);
+    setLastNotification("🪴 Planted Golden Money Tree! Added +R50 to Savings and boosts passive interest!");
   };
 
-  // Keyboard controls
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
-      if (key === "arrowup" || key === "w") {
-        e.preventDefault();
-        handleMove(0, -1);
-      } else if (key === "arrowdown" || key === "s") {
-        e.preventDefault();
-        handleMove(0, 1);
-      } else if (key === "arrowleft" || key === "a") {
-        e.preventDefault();
-        handleMove(-1, 0);
-      } else if (key === "arrowright" || key === "d") {
-        e.preventDefault();
-        handleMove(1, 0);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [playerPos, activeDilemmaOpen, chests, collectibles, hazards, shieldsCount]);
-
-  // Magic Potion Shops
-  const buyVisionPotion = () => {
-    if (balance < 60) {
-      setLastLog("❌ Not enough Coins to buy Vision Potion! (Requires R60)");
+  const buySolarInverter = () => {
+    if (balance < 200) {
+      setLastNotification("❌ Not enough cash for Solar Backup Inverter! (R200 required)");
       return;
     }
-    onStatsChanged({ balance: -60 });
-    setHasVision(true);
-    setLastLog("🔮 Drank Vision Potion! All hidden traps revealed on your path.");
+    onStatsChanged({ balance: -200, stress: -10 });
+    setHasSolarInverter(true);
+    setLastNotification("☀️ Solar Inverter Installed! Shields your place from electricity tariff spikes and reduced stress (-10%)!");
+  };
+
+  const buySmartLaptop = () => {
+    if (balance < 250) {
+      setLastNotification("❌ Not enough cash for Smart Budgeting Workstation! (R250 required)");
+      return;
+    }
+    onStatsChanged({ balance: -250, stress: -15 });
+    setHasSmartLaptop(true);
+    setLastNotification("💻 Upgraded to Smart Workstation! Automated financial tracking reduces choice stress permanently (-15%)!");
   };
 
   const buyDebtShield = () => {
     if (balance < 100) {
-      setLastLog("❌ Not enough Coins to buy Debt Shield spell! (Requires R100)");
+      setLastNotification("❌ Not enough cash for Emergency Debt Shield! (R100 required)");
       return;
     }
     onStatsChanged({ balance: -100 });
-    setShieldsCount(prev => prev + 1);
-    setLastLog("🛡️ Shield Spell active! The next hazard trap you hit will be absorbed.");
+    setHasShield(true);
+    setLastNotification("🛡️ Emergency Protection Shield Active! Absorbs the next unexpected debt penalty!");
   };
 
-  const buyStressRelief = () => {
-    if (balance < 80) {
-      setLastLog("❌ Not enough Coins to buy Stress Relief herbs! (Requires R80)");
+  const buyStressTea = () => {
+    if (balance < 60) {
+      setLastNotification("❌ Not enough cash for Zen Herbal Tea! (R60 required)");
       return;
     }
     if (stress === 0) {
-      setLastLog("🧘 Your Meerkat is already perfectly calm!");
+      setLastNotification("🧘 Your character is already completely relaxed!");
       return;
     }
-    onStatsChanged({ balance: -80, stress: -20 });
-    setLastLog("🌿 Consumed soothing herbs. Stress decreased by 20%!");
+    onStatsChanged({ balance: -60, stress: -20 });
+    setLastNotification("🍵 Consumed Zen Herbal Tea. Stress reduced by -20%!");
   };
 
-  // Dilemma Selection Wrapper
-  const handleOptionClick = (option: DecisionOption) => {
-    setActiveDilemmaOpen(false);
-    onChoiceSelected(option);
+  // Choice Selection
+  const handleSelectOption = (option: DecisionOption) => {
+    // Apply debt shield if negative balance change and shield active
+    if (hasShield && option.balanceChange < 0) {
+      setHasShield(false);
+      const reducedLoss = Math.round(option.balanceChange * 0.5);
+      setLastNotification(`🛡️ Emergency Shield absorbed 50% of financial loss! Saved ${Math.abs(reducedLoss)} Coins!`);
+      onChoiceSelected({
+        ...option,
+        balanceChange: reducedLoss
+      });
+    } else {
+      onChoiceSelected(option);
+    }
   };
+
+  const CategoryIcon = iconMap[event.icon] || Compass;
 
   return (
-    <div className="max-w-6xl mx-auto py-6 px-4" id="labyrinth-game">
+    <div className="max-w-6xl mx-auto py-4 px-3 sm:px-6 font-sans" id="place-universe">
       
-      {/* Visual Game Screen Grid and Sidebar Column */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* Top Banner: Personal Estate Status & Live Notification */}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xl mb-6 relative overflow-hidden">
+        <div className={`absolute top-0 right-0 w-96 h-96 bg-gradient-to-br ${estate.color} opacity-15 rounded-full blur-3xl pointer-events-none`} />
         
-        {/* SIDEBAR: Labyrinth Legend, Controls, and Magic Potion Shop */}
-        <div className="lg:col-span-4 space-y-5">
-          
-          {/* Labyrinth status and lore */}
-          <div className="bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 p-4 shadow-md">
-            <h3 className="text-sm font-bold font-sans text-emerald-400 flex items-center gap-1.5 uppercase tracking-wide">
-              <Compass className="w-4 h-4" />
-              Labyrinth Navigator
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-1 leading-normal">
-              Guide your Meerkat <span className="text-slate-100 font-bold">{character.name}</span> through the visual Wealth Labyrinth. Walk into the golden Challenge Scrolls to make critical choices!
-            </p>
-
-            <div className="mt-4 pt-3 border-t border-slate-800 grid grid-cols-3 gap-2 text-center">
-              <div className="bg-slate-950 p-2 rounded-xl border border-slate-800/60">
-                <span className="text-xs text-slate-500 uppercase font-mono leading-none block">Shields</span>
-                <span className="text-sm font-bold font-mono text-emerald-400 mt-0.5 block flex items-center justify-center gap-1">
-                  <Shield className="w-3.5 h-3.5" />
-                  {shieldsCount}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+          <div className="flex items-center gap-3.5">
+            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${estate.color} text-3xl flex items-center justify-center shadow-lg border border-white/20`}>
+              {estate.icon}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-emerald-400 bg-emerald-950/80 border border-emerald-800/80 px-2 py-0.5 rounded-md">
+                  Personal Place & Universe
                 </span>
+                <span className="text-xs text-slate-400 font-mono">Month Step #{stepIndex + 1} of {totalSteps}</span>
               </div>
-              <div className="bg-slate-950 p-2 rounded-xl border border-slate-800/60">
-                <span className="text-xs text-slate-500 uppercase font-mono leading-none block">Vision</span>
-                <span className="text-sm font-bold font-mono text-indigo-400 mt-0.5 block">
-                  {hasVision ? "ACTIVE" : "OFF"}
-                </span>
-              </div>
-              <div className="bg-slate-950 p-2 rounded-xl border border-slate-800/60">
-                <span className="text-xs text-slate-500 uppercase font-mono leading-none block">Lives</span>
-                <span className="text-sm font-bold font-mono text-rose-500 mt-0.5 block">
-                  ❤️{lives}
-                </span>
-              </div>
+              <h2 className="text-xl font-black text-white mt-0.5 flex items-center gap-2">
+                {estate.title}
+              </h2>
+              <p className="text-xs text-slate-400 font-medium max-w-lg mt-0.5 leading-snug">
+                {estate.desc}
+              </p>
             </div>
           </div>
 
-          {/* Labyrinth Magic Shop */}
-          <div className="bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 p-4 shadow-md">
-            <h3 className="text-sm font-bold font-sans text-emerald-400 flex items-center gap-1.5 uppercase tracking-wide mb-3">
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              Labyrinth Spell Shop
-            </h3>
-            
-            <div className="space-y-2.5">
-              <button
-                onClick={buyVisionPotion}
-                className="w-full bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-indigo-500/55 p-2 rounded-xl text-left flex items-center justify-between transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 bg-indigo-500/10 text-indigo-400 rounded-lg group-hover:bg-indigo-500/20">
-                    <Eye className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold block text-slate-200">Vision Potion</span>
-                    <span className="text-[10px] text-slate-500 leading-none">Reveals hidden trap locations</span>
-                  </div>
-                </div>
-                <span className="text-xs font-bold font-mono bg-indigo-950 text-indigo-300 border border-indigo-800/80 px-2 py-0.5 rounded">
-                  R60
-                </span>
-              </button>
-
-              <button
-                onClick={buyDebtShield}
-                className="w-full bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-emerald-500/55 p-2 rounded-xl text-left flex items-center justify-between transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg group-hover:bg-emerald-500/20">
-                    <Shield className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold block text-slate-200">Debt Shield Spell</span>
-                    <span className="text-[10px] text-slate-500 leading-none">Absorbs the next hazard/trap hit</span>
-                  </div>
-                </div>
-                <span className="text-xs font-bold font-mono bg-emerald-950 text-emerald-300 border border-emerald-800/80 px-2 py-0.5 rounded">
-                  R100
-                </span>
-              </button>
-
-              <button
-                onClick={buyStressRelief}
-                className="w-full bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-amber-500/55 p-2 rounded-xl text-left flex items-center justify-between transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg group-hover:bg-amber-500/20">
-                    <Coffee className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold block text-slate-200">Stress-Away Herbs</span>
-                    <span className="text-[10px] text-slate-500 leading-none">Reduces stress levels by -20%</span>
-                  </div>
-                </div>
-                <span className="text-xs font-bold font-mono bg-amber-950 text-amber-300 border border-amber-800/80 px-2 py-0.5 rounded">
-                  R80
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* Map legend description */}
-          <div className="bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 p-4 shadow-sm text-xs space-y-2">
-            <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px] block">Legend</span>
-            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
-              <div className="flex items-center gap-1.5">
-                {character.avatar.startsWith("/") || character.avatar.startsWith("http") ? (
-                  <img src={character.avatar} className="w-5 h-5 rounded-full object-cover border border-emerald-400 bg-white" referrerPolicy="no-referrer" alt="Mali" />
-                ) : (
-                  <span className="text-lg">{character.avatar}</span>
-                )}
-                <span>Your Meerkat</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-lg">📜</span>
-                <span>Dilemma Scroll</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-lg">💰</span>
-                <span>Coin (+R50)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-lg">💎</span>
-                <span>Shard (+R50)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-lg text-rose-500">⚠️</span>
-                <span>Hazard Trap</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-lg">✅</span>
-                <span>Solved Scroll</span>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* CENTER: The Visual 2D Labyrinth Grid & Live Action logs */}
-        <div className="lg:col-span-8 flex flex-col items-center">
-          
-          {/* Active Logs Banner */}
-          <div className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs py-2 px-4 rounded-xl font-mono mb-4 text-center select-none flex items-center justify-center gap-1.5">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-            <span>{lastLog}</span>
-          </div>
-
-          {/* Visual 2D grid canvas container */}
-          <div className="bg-slate-950 border-2 border-emerald-500/40 rounded-2xl p-4 shadow-[0_0_15px_rgba(16,185,129,0.15)] relative overflow-hidden select-none">
-            
-            {/* The actual 10x10 tile matrix map */}
-            <div className="grid grid-cols-10 gap-1 sm:gap-1.5 max-w-lg mx-auto">
-              {layout.map((row, rIdx) => 
-                row.map((cell, cIdx) => {
-                  const isWall = cell === 1;
-                  const isPlayer = playerPos.x === cIdx && playerPos.y === rIdx;
-                  
-                  // Locate items
-                  const activeChest = chests.find(c => c.x === cIdx && c.y === rIdx);
-                  const activeColl = collectibles.find(c => c.x === cIdx && c.y === rIdx && !c.collected);
-                  const activeHaz = hazards.find(h => h.x === cIdx && h.y === rIdx && !h.triggered);
-
-                  let cellColor = "bg-slate-900 border-slate-800/40 hover:bg-slate-850";
-                  if (isWall) {
-                    cellColor = "bg-slate-800 border-slate-700/80 shadow-inner";
-                  }
-
-                  return (
-                    <div
-                      key={`${rIdx}-${cIdx}`}
-                      onClick={() => {
-                        // Click to move to adjacent slots
-                        const dx = cIdx - playerPos.x;
-                        const dy = rIdx - playerPos.y;
-                        if (Math.abs(dx) + Math.abs(dy) === 1) {
-                          handleMove(dx, dy);
-                        }
-                      }}
-                      className={`relative aspect-square w-7 h-7 sm:w-11 sm:h-11 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${cellColor}`}
-                    >
-                      {/* Grid walls visual overlay border */}
-                      {isWall && (
-                        <div className="absolute inset-1 rounded bg-slate-900/60 border border-emerald-500/20" />
-                      )}
-
-                      {/* Display Items */}
-                      {!isWall && !isPlayer && (
-                        <>
-                          {/* Chest dilemma scroll */}
-                          {activeChest && (
-                            <motion.span
-                              animate={{ scale: activeChest.solved ? 1 : [1, 1.15, 1], y: activeChest.solved ? 0 : [0, -3, 0] }}
-                              transition={{ repeat: Infinity, duration: 2 }}
-                              className="text-base sm:text-xl filter drop-shadow-sm"
-                            >
-                              {activeChest.solved ? "✅" : "📜"}
-                            </motion.span>
-                          )}
-
-                          {/* Collectible Coin or Shards */}
-                          {activeColl && (
-                            <motion.span
-                              animate={{ scale: [0.9, 1.1, 0.9], rotate: [0, 10, -10, 0] }}
-                              transition={{ repeat: Infinity, duration: 2.5 }}
-                              className="text-base sm:text-xl"
-                            >
-                              {activeColl.type === "coin" ? "💰" : "💎"}
-                            </motion.span>
-                          )}
-
-                          {/* Triggerable hazards */}
-                          {activeHaz && (hasVision || activeHaz.triggered) && (
-                            <span className="text-base sm:text-xl text-rose-500 font-bold">
-                              ⚠️
-                            </span>
-                          )}
-                        </>
-                      )}
-
-                      {/* Animated Player Meerkat */}
-                      {isPlayer && (
-                        <motion.div
-                          layoutId="meerkat-player"
-                          className="absolute inset-0 flex items-center justify-center z-10 filter drop-shadow-md p-1"
-                        >
-                          {character.avatar.startsWith("/") || character.avatar.startsWith("http") ? (
-                            <img src={character.avatar} className="w-full h-full rounded-full object-cover border border-emerald-400 bg-white" referrerPolicy="no-referrer" alt={character.name} />
-                          ) : (
-                            <span className="text-xl sm:text-2xl">{character.avatar}</span>
-                          )}
-                        </motion.div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            {/* Neon Green overlay laser glow grids */}
-            <div className="absolute inset-0 border border-emerald-500/10 pointer-events-none" />
-          </div>
-
-          {/* Tactical tactile On-screen D-Pad arrow controls (for Touch/Mobile) */}
-          <div className="mt-5 flex flex-col items-center gap-1 sm:hidden">
+          {/* Quick Place Navigation Tabs */}
+          <div className="flex items-center gap-1.5 bg-slate-950 p-1.5 rounded-2xl border border-slate-800/80 w-full sm:w-auto justify-center">
             <button
-              onClick={() => handleMove(0, -1)}
-              className="p-3 bg-slate-900 text-slate-100 hover:bg-slate-800 active:bg-slate-950 border border-slate-700 rounded-2xl cursor-pointer"
+              onClick={() => setActiveTab("PLACE")}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === "PLACE" ? "bg-emerald-500 text-slate-950 shadow-md font-extrabold" : "text-slate-400 hover:text-white"
+              }`}
             >
-              <ArrowUp className="w-5 h-5 text-emerald-400" />
+              <Home className="w-3.5 h-3.5" /> Living Room
             </button>
-            <div className="flex gap-4">
-              <button
-                onClick={() => handleMove(-1, 0)}
-                className="p-3 bg-slate-900 text-slate-100 hover:bg-slate-800 active:bg-slate-950 border border-slate-700 rounded-2xl cursor-pointer"
-              >
-                <ArrowLeft className="w-5 h-5 text-emerald-400" />
-              </button>
-              <button
-                onClick={() => handleMove(1, 0)}
-                className="p-3 bg-slate-900 text-slate-100 hover:bg-slate-800 active:bg-slate-950 border border-slate-700 rounded-2xl cursor-pointer"
-              >
-                <ArrowRight className="w-5 h-5 text-emerald-400" />
-              </button>
-            </div>
             <button
-              onClick={() => handleMove(0, 1)}
-              className="p-3 bg-slate-900 text-slate-100 hover:bg-slate-800 active:bg-slate-950 border border-slate-700 rounded-2xl cursor-pointer"
+              onClick={() => setActiveTab("DECISION")}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer relative ${
+                activeTab === "DECISION" ? "bg-amber-400 text-slate-950 shadow-md font-extrabold" : "text-slate-400 hover:text-white"
+              }`}
             >
-              <ArrowDown className="w-5 h-5 text-emerald-400" />
+              <Laptop className="w-3.5 h-3.5" /> Workstation
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping absolute top-1 right-1" />
+            </button>
+            <button
+              onClick={() => setActiveTab("VAULT")}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === "VAULT" ? "bg-blue-500 text-white shadow-md font-extrabold" : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <PiggyBank className="w-3.5 h-3.5" /> Wealth Vault
+            </button>
+            <button
+              onClick={() => setActiveTab("SHOP")}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === "SHOP" ? "bg-purple-500 text-white shadow-md font-extrabold" : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <ShoppingCart className="w-3.5 h-3.5" /> Place Upgrades
             </button>
           </div>
-
-          {/* Desktop tactile helper arrows panel */}
-          <div className="hidden sm:flex items-center gap-1.5 mt-4 text-[10px] text-slate-400 font-mono">
-            <span className="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">W / ⬆️</span>
-            <span className="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">A / ⬅️</span>
-            <span className="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">S / ⬇️</span>
-            <span className="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">D / ➡️</span>
-            <span>to move. Click nearby cells to glide.</span>
-          </div>
-
         </div>
 
+        {/* Live Event Log Bar */}
+        <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center gap-2 text-xs text-slate-300 font-mono">
+          <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0 animate-pulse" />
+          <span className="truncate">{lastNotification}</span>
+        </div>
       </div>
 
-      {/* OVERLAY DILEMMA MODAL: Triggers when the Meerkat steps on a Chest */}
-      <AnimatePresence>
-        {activeDilemmaOpen && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 20 }}
-              className="bg-white border border-gray-200 rounded-3xl max-w-xl w-full shadow-2xl p-6 sm:p-8 overflow-hidden relative"
-            >
-              {/* Category tag header */}
-              <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border bg-emerald-50 text-emerald-800 border-emerald-100">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-                  <span className="capitalize">{event.category} challenge</span>
+      {/* MAIN ENVIRONMENT CONTENT CONTAINER */}
+      <AnimatePresence mode="wait">
+        
+        {/* TAB 1: INTERACTIVE LIVING PLACE CANVAS */}
+        {activeTab === "PLACE" && (
+          <motion.div
+            key="tab-place"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="grid grid-cols-1 lg:grid-cols-12 gap-6"
+          >
+            {/* Left 8 Cols: Visual Interactive Room Canvas */}
+            <div className="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[460px]">
+              
+              {/* Room Background Texture & Ambient Lights */}
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-800/50 via-slate-950 to-slate-950 pointer-events-none" />
+              
+              {/* Room Header Info */}
+              <div className="relative z-10 flex items-center justify-between pb-4 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{estate.icon}</span>
+                  <div>
+                    <h3 className="text-sm font-black text-white">{character.name}'s Residence</h3>
+                    <span className="text-[10px] text-emerald-400 font-mono font-bold">Net Worth: R{netWorth.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800 text-xs font-mono">
+                  <span>Stress Level:</span>
+                  <span className={`font-bold ${stress > 60 ? "text-rose-400" : stress > 30 ? "text-amber-400" : "text-emerald-400"}`}>
+                    {stress}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Room Interactive Scene / Visual Elements */}
+              <div className="relative z-10 my-6 grid grid-cols-2 sm:grid-cols-3 gap-4 items-center">
+                
+                {/* 1. Character Avatar Living in Room */}
+                <div className="bg-slate-950/90 border border-slate-800/80 rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-lg relative group">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 border-2 border-emerald-400/40 flex items-center justify-center text-5xl mb-2 relative">
+                    {character.avatar.startsWith("/") || character.avatar.startsWith("http") ? (
+                      <img src={character.avatar} className="w-full h-full object-cover rounded-xl" referrerPolicy="no-referrer" alt={character.name} />
+                    ) : (
+                      character.avatar
+                    )}
+                    <span className="absolute -bottom-1 -right-1 bg-emerald-500 text-slate-950 text-[9px] font-black font-mono px-1.5 py-0.5 rounded-md">
+                      ACTIVE
+                    </span>
+                  </div>
+                  <span className="text-xs font-extrabold text-white">{character.name}</span>
+                  <span className="text-[10px] text-slate-400 font-mono">{character.role}</span>
+                </div>
+
+                {/* 2. Workstation Desk (Triggers Decision) */}
+                <button
+                  onClick={() => setActiveTab("DECISION")}
+                  className="bg-slate-950/90 hover:bg-slate-950 border-2 border-amber-500/50 hover:border-amber-400 rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-xl transition-all transform hover:scale-105 cursor-pointer relative group"
+                >
+                  <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-3xl mb-2 text-amber-300 relative">
+                    💻
+                    <span className="absolute -top-2 -right-2 bg-rose-500 text-white font-mono font-black text-[9px] px-2 py-0.5 rounded-full animate-bounce">
+                      ACTION!
+                    </span>
+                  </div>
+                  <span className="text-xs font-black text-amber-300">Financial Workstation</span>
+                  <span className="text-[10px] text-slate-400 font-mono">Month #{stepIndex + 1} Decision</span>
+                </button>
+
+                {/* 3. Golden Money Tree */}
+                <div className={`bg-slate-950/90 border rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-lg relative transition-all ${
+                  hasMoneyTree ? "border-emerald-500/60" : "border-slate-800 opacity-60"
+                }`}>
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-center text-3xl mb-2">
+                    {hasMoneyTree ? "🪴" : "🌱"}
+                  </div>
+                  <span className="text-xs font-black text-slate-200">
+                    {hasMoneyTree ? "Golden Money Tree" : "Empty Plant Pot"}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {hasMoneyTree ? "Compounding Savings" : "Buy in Place Shop"}
+                  </span>
+                </div>
+
+                {/* 4. Solar Power / Smart Utilities */}
+                <div className={`bg-slate-950/90 border rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-lg relative transition-all ${
+                  hasSolarInverter ? "border-cyan-500/60" : "border-slate-800 opacity-60"
+                }`}>
+                  <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-400/30 flex items-center justify-center text-3xl mb-2">
+                    {hasSolarInverter ? "☀️" : "🔌"}
+                  </div>
+                  <span className="text-xs font-black text-slate-200">
+                    {hasSolarInverter ? "Solar Backup Inverter" : "Grid Power"}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {hasSolarInverter ? "Tariff Shield Active" : "Unprotected"}
+                  </span>
+                </div>
+
+                {/* 5. Emergency Protection Shield */}
+                <div className={`bg-slate-950/90 border rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-lg relative transition-all ${
+                  hasShield ? "border-purple-500/60" : "border-slate-800 opacity-60"
+                }`}>
+                  <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-400/30 flex items-center justify-center text-3xl mb-2">
+                    {hasShield ? "🛡️" : "📦"}
+                  </div>
+                  <span className="text-xs font-black text-slate-200">
+                    {hasShield ? "Debt Shield Active" : "No Shield"}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {hasShield ? "Absorbs Debt Traps" : "Get in Shop"}
+                  </span>
+                </div>
+
+                {/* 6. Zen Mindfulness Station */}
+                <button
+                  onClick={buyStressTea}
+                  className="bg-slate-950/90 hover:bg-slate-950 border border-amber-800/80 hover:border-amber-400 rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-lg transition-all cursor-pointer group"
+                >
+                  <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-400/30 flex items-center justify-center text-3xl mb-2 group-hover:scale-110 transition-transform">
+                    🍵
+                  </div>
+                  <span className="text-xs font-black text-amber-300">Sip Zen Herbal Tea</span>
+                  <span className="text-[10px] text-slate-400 font-mono">Reduce Stress (-R60)</span>
+                </button>
+
+              </div>
+
+              {/* Bottom Room Call-To-Action */}
+              <div className="relative z-10 pt-4 border-t border-slate-800 flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-mono">
+                  💡 Tip: Click your <strong className="text-amber-300">Financial Workstation</strong> to handle this month's decision!
                 </span>
-                <span className="text-xs text-gray-400 font-mono uppercase">
-                  Node {stepIndex + 1} of {totalSteps}
+
+                <button
+                  onClick={() => setActiveTab("DECISION")}
+                  className="bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  Open Workstation Decision <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+            </div>
+
+            {/* Right 4 Cols: Living Place Environment Perks & Ledger */}
+            <div className="lg:col-span-4 space-y-4">
+              
+              {/* Financial Balances Card */}
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-3">
+                <h3 className="text-xs font-extrabold uppercase font-mono tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Coins className="w-4 h-4 text-emerald-400" /> Current Financial Standings
+                </h3>
+
+                <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800/80">
+                    <span className="text-[10px] text-slate-500 uppercase font-mono block">Available Cash</span>
+                    <span className="text-lg font-black text-emerald-400 font-mono">R{balance.toLocaleString()}</span>
+                  </div>
+
+                  <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800/80">
+                    <span className="text-[10px] text-slate-500 uppercase font-mono block">Savings Pool</span>
+                    <span className="text-lg font-black text-blue-400 font-mono">R{savings.toLocaleString()}</span>
+                  </div>
+
+                  <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800/80">
+                    <span className="text-[10px] text-slate-500 uppercase font-mono block">Active Debt</span>
+                    <span className="text-lg font-black text-rose-400 font-mono">R{debt.toLocaleString()}</span>
+                  </div>
+
+                  <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800/80">
+                    <span className="text-[10px] text-slate-500 uppercase font-mono block">Mind Stress</span>
+                    <span className="text-lg font-black text-amber-400 font-mono">{stress}%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Estate Level Progression */}
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-slate-200">Estate Rank Progress</span>
+                  <span className="text-xs font-mono font-bold text-emerald-400">R{netWorth.toLocaleString()} / R15,000</span>
+                </div>
+                
+                <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800">
+                  <div 
+                    className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(10, (netWorth / 15000) * 100))}%` }}
+                  />
+                </div>
+                <span className="text-[10px] text-slate-400 mt-2 block font-mono">
+                  Grow net worth to unlock the <strong className="text-slate-200">Urban Town Apartment</strong> & <strong className="text-slate-200">Solar Sanctuary Estate</strong>!
                 </span>
               </div>
 
-              {/* Dilemma Text and Narrative Description */}
-              <h2 className="text-lg sm:text-xl font-sans font-extrabold text-gray-950 mb-2 leading-tight">
-                {event.title}
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
-                {event.description}
-              </p>
+            </div>
+          </motion.div>
+        )}
 
-              {/* Choices list */}
-              <div className="space-y-3.5">
+        {/* TAB 2: FINANCIAL WORKSTATION DECISION HOTSPOT */}
+        {activeTab === "DECISION" && (
+          <motion.div
+            key="tab-decision"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6"
+          >
+            {/* Event Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-300 flex items-center justify-center text-2xl">
+                  <CategoryIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase font-mono font-bold bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded">
+                      {event.category}
+                    </span>
+                    <span className="text-xs text-slate-400 font-mono">Hotspot Decision #{stepIndex + 1}</span>
+                  </div>
+                  <h3 className="text-lg font-black text-white mt-0.5">{event.title}</h3>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setActiveTab("PLACE")}
+                className="text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-3.5 py-2 rounded-xl transition-all cursor-pointer font-bold"
+              >
+                ← Back to Living Room
+              </button>
+            </div>
+
+            {/* Event Description Narrative */}
+            <div className="bg-slate-950/90 border border-slate-800/80 rounded-2xl p-4 sm:p-5 text-slate-200 text-sm leading-relaxed font-sans">
+              {event.description}
+            </div>
+
+            {/* Decision Choices */}
+            <div className="space-y-3.5">
+              <h4 className="text-xs font-extrabold uppercase font-mono tracking-wider text-slate-400">
+                Choose your financial action path:
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {event.options.map((option, idx) => {
-                  const balanceAfter = balance + option.balanceChange;
-                  const savingsAfter = savings + option.savingsChange;
-                  const triggersDebt = balanceAfter < 0 && (balanceAfter + savingsAfter) < 0;
+                  const isPositiveNet = (option.balanceChange + option.savingsChange - option.debtChange) >= 0;
 
                   return (
-                    <button
+                    <motion.button
                       key={idx}
-                      onClick={() => handleOptionClick(option)}
-                      className="w-full text-left bg-gray-50/50 hover:bg-emerald-50/10 border border-gray-200 hover:border-emerald-500 rounded-2xl p-4 transition-all block cursor-pointer group relative overflow-hidden"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleSelectOption(option)}
+                      className={`p-5 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer shadow-lg relative overflow-hidden group ${
+                        isPositiveNet 
+                          ? "bg-slate-950 hover:bg-slate-900 border-slate-800 hover:border-emerald-500/60"
+                          : "bg-slate-950 hover:bg-slate-900 border-slate-800 hover:border-amber-500/60"
+                      }`}
                     >
-                      <div className="flex justify-between items-start gap-3">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-sans font-extrabold text-xs sm:text-sm text-gray-950 group-hover:text-emerald-700 transition-colors">
-                              {option.text}
+                      <div>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <h5 className="text-sm font-black text-white group-hover:text-emerald-300 transition-colors">
+                            {option.text}
+                          </h5>
+                          {isPositiveNet && (
+                            <span className="text-[9px] font-black uppercase font-mono bg-emerald-950 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-800">
+                              WISE CHOICE
                             </span>
-                            {triggersDebt && (
-                              <span className="text-[8px] uppercase font-mono tracking-wider bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded border border-rose-200">
-                                Triggers Debt Trap
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-gray-500 leading-normal mb-2.5">
-                            {option.description}
-                          </p>
-
-                          {/* Impacts badge row */}
-                          <div className="flex flex-wrap gap-1.5">
-                            {option.balanceChange !== 0 && (
-                              <span className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded ${
-                                option.balanceChange > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-rose-50 text-rose-700 border border-rose-100"
-                              }`}>
-                                {option.balanceChange > 0 ? `+R${option.balanceChange}` : `-R${Math.abs(option.balanceChange)}`} Coins
-                              </span>
-                            )}
-                            {option.savingsChange !== 0 && (
-                              <span className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded ${
-                                option.savingsChange > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-rose-50 text-rose-700 border border-rose-100"
-                              }`}>
-                                {option.savingsChange > 0 ? `+R${option.savingsChange}` : `-R${Math.abs(option.savingsChange)}`} Shards
-                              </span>
-                            )}
-                            {option.debtChange !== 0 && (
-                              <span className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded ${
-                                option.debtChange < 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-rose-50 text-rose-700 border border-rose-100"
-                              }`}>
-                                {option.debtChange > 0 ? `+R${option.debtChange} Curse` : `-R${Math.abs(option.debtChange)} Curse`}
-                              </span>
-                            )}
-                            {option.stressChange !== 0 && (
-                              <span className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded ${
-                                option.stressChange < 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-amber-50 text-amber-700 border border-amber-100"
-                              }`}>
-                                {option.stressChange > 0 ? `+${option.stressChange}% Stress` : `${option.stressChange}% Stress`}
-                              </span>
-                            )}
-                          </div>
+                          )}
                         </div>
-                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-600 flex-shrink-0 mt-0.5 transition-colors" />
+                        <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                          {option.description}
+                        </p>
                       </div>
-                    </button>
+
+                      <div className="pt-3 border-t border-slate-800/80 space-y-1.5 font-mono text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500">Cash:</span>
+                          <span className={`font-bold ${option.balanceChange >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                            {option.balanceChange >= 0 ? "+" : ""}R{option.balanceChange}
+                          </span>
+                        </div>
+
+                        {option.savingsChange !== 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500">Savings:</span>
+                            <span className={`font-bold ${option.savingsChange > 0 ? "text-blue-400" : "text-rose-400"}`}>
+                              {option.savingsChange > 0 ? "+" : ""}R{option.savingsChange}
+                            </span>
+                          </div>
+                        )}
+
+                        {option.debtChange !== 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500">Debt:</span>
+                            <span className={`font-bold ${option.debtChange < 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                              {option.debtChange > 0 ? "+" : ""}R{option.debtChange}
+                            </span>
+                          </div>
+                        )}
+
+                        {option.stressChange !== 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500">Stress:</span>
+                            <span className={`font-bold ${option.stressChange < 0 ? "text-emerald-400" : "text-amber-400"}`}>
+                              {option.stressChange > 0 ? "+" : ""}{option.stressChange}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </motion.button>
                   );
                 })}
               </div>
+            </div>
+          </motion.div>
+        )}
 
-              {/* Tip / Education Footer */}
-              {event.options.some(o => o.longTermBenefit) && (
-                <div className="mt-5 p-3 bg-blue-50/40 border border-blue-100 rounded-2xl flex gap-2 items-start">
-                  <Info className="w-3.5 h-3.5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-blue-800 leading-normal font-medium">
-                    Note: Investing in compound savings shields or paying down debt early creates robust financial protection for future cycles!
+        {/* TAB 3: WEALTH VAULT & COMPOUNDING TREE */}
+        {activeTab === "VAULT" && (
+          <motion.div
+            key="tab-vault"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6"
+          >
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-400/40 text-blue-300 flex items-center justify-center text-2xl">
+                  🏛️
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">Wealth Vault & Money Tree</h3>
+                  <p className="text-xs text-slate-400">Track long-term asset compounding and investment yields.</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setActiveTab("PLACE")}
+                className="text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-3.5 py-2 rounded-xl transition-all cursor-pointer font-bold"
+              >
+                ← Return to Room
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2">
+                <span className="text-xs text-slate-400 uppercase font-mono block">Total Accumulated Savings</span>
+                <span className="text-2xl font-black text-blue-400 font-mono">R{savings.toLocaleString()}</span>
+                <p className="text-[11px] text-slate-500 leading-snug">
+                  Earning ~8% annual compound interest every month end!
+                </p>
+              </div>
+
+              <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2">
+                <span className="text-xs text-slate-400 uppercase font-mono block">Net Worth Position</span>
+                <span className="text-2xl font-black text-emerald-400 font-mono">R{netWorth.toLocaleString()}</span>
+                <p className="text-[11px] text-slate-500 leading-snug">
+                  Liquid Cash + Savings minus Total Outstanding Debt.
+                </p>
+              </div>
+
+              <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2">
+                <span className="text-xs text-slate-400 uppercase font-mono block">Passive Yield Multiplier</span>
+                <span className="text-2xl font-black text-amber-400 font-mono">
+                  {hasMoneyTree ? "1.25x (Boosted)" : "1.00x"}
+                </span>
+                <p className="text-[11px] text-slate-500 leading-snug">
+                  {hasMoneyTree ? "Golden Money Tree active in place!" : "Plant Money Tree in Place Shop!"}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* TAB 4: PLACE & ENVIRONMENT UPGRADES SHOP */}
+        {activeTab === "SHOP" && (
+          <motion.div
+            key="tab-shop"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6"
+          >
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-400/40 text-purple-300 flex items-center justify-center text-2xl">
+                  🛒
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">Place & Environment Upgrades Store</h3>
+                  <p className="text-xs text-slate-400">Upgrade your living space to automate savings and protect your lifestyle.</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setActiveTab("PLACE")}
+                className="text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-3.5 py-2 rounded-xl transition-all cursor-pointer font-bold"
+              >
+                ← Return to Room
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              
+              {/* Upgrade 1: Money Tree */}
+              <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                <div>
+                  <div className="text-3xl mb-2">🪴</div>
+                  <h4 className="text-sm font-extrabold text-white">Golden Money Tree Seedling</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Plants a compounding tree in your room. Adds +R50 savings immediately and boosts interest yield!
                   </p>
                 </div>
-              )}
+                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-amber-300">R120</span>
+                  <button
+                    onClick={buyMoneyTree}
+                    disabled={hasMoneyTree}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      hasMoneyTree 
+                        ? "bg-slate-800 text-slate-500 cursor-not-allowed"
+                        : "bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black"
+                    }`}
+                  >
+                    {hasMoneyTree ? "Owned ✓" : "Purchase"}
+                  </button>
+                </div>
+              </div>
 
-            </motion.div>
-          </div>
+              {/* Upgrade 2: Solar Inverter */}
+              <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                <div>
+                  <div className="text-3xl mb-2">☀️</div>
+                  <h4 className="text-sm font-extrabold text-white">Solar Backup Inverter</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Protects your residence against sudden utility price spikes and lowers stress levels by -10%!
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-amber-300">R200</span>
+                  <button
+                    onClick={buySolarInverter}
+                    disabled={hasSolarInverter}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      hasSolarInverter 
+                        ? "bg-slate-800 text-slate-500 cursor-not-allowed"
+                        : "bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black"
+                    }`}
+                  >
+                    {hasSolarInverter ? "Installed ✓" : "Purchase"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Upgrade 3: Smart Workstation */}
+              <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                <div>
+                  <div className="text-3xl mb-2">💻</div>
+                  <h4 className="text-sm font-extrabold text-white">Smart Budgeting Workstation</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Automates budget calculations. Permanently reduces choice stress penalties by -15%!
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-amber-300">R250</span>
+                  <button
+                    onClick={buySmartLaptop}
+                    disabled={hasSmartLaptop}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      hasSmartLaptop 
+                        ? "bg-slate-800 text-slate-500 cursor-not-allowed"
+                        : "bg-purple-500 hover:bg-purple-400 text-white font-black"
+                    }`}
+                  >
+                    {hasSmartLaptop ? "Installed ✓" : "Purchase"}
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </motion.div>
         )}
+
       </AnimatePresence>
 
     </div>

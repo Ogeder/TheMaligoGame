@@ -39,7 +39,7 @@ const PERK_OPTIONS = [
   {
     id: "Shield Master",
     name: "🛡️ Shield Master",
-    desc: "Start the Flappy Labyrinth game with +1 Extra Shield (2 total) to withstand debt pillars!"
+    desc: "Start Flappy Chrono Arcade with +1 Extra Shield (2 total) to withstand debt pillars!"
   },
   {
     id: "Thrifty Diet",
@@ -57,9 +57,9 @@ const PERK_OPTIONS = [
     desc: "Receive a R300 cash bonus at the end of every quarter (March, June, September, December)."
   },
   {
-    id: "Labyrinth Star",
-    name: "🚀 Labyrinth Star",
-    desc: "Collect wealth shards in Flappy Labyrinth with +2 bonus shards per diamond!"
+    id: "Arcade Star",
+    name: "🚀 Arcade Star",
+    desc: "Collect wealth shards in mini-games with +2 bonus shards per gem!"
   }
 ];
 

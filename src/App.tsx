@@ -54,6 +54,17 @@ export default function App() {
   const [unlockedGameType, setUnlockedGameType] = useState<"BOUNCE" | "STACK" | "TAP_MALI" | "SLICER" | null>(null);
   const [hasBounceGameUnlocked, setHasBounceGameUnlocked] = useState<boolean>(false);
   const [bounceUnlockMessage, setBounceUnlockMessage] = useState<string | null>(null);
+  const [unlockedGamesList, setUnlockedGamesList] = useState<string[]>(["BOUNCE"]);
+
+  const unlockMilestoneGame = (gameId: string, message: string) => {
+    setUnlockedGamesList(prev => {
+      if (!prev.includes(gameId)) {
+        setBounceUnlockMessage(message);
+        return [...prev, gameId];
+      }
+      return prev;
+    });
+  };
 
   // Compound calculations records
   const [interestEarned, setInterestEarned] = useState<number>(0);
@@ -281,19 +292,34 @@ export default function App() {
 
     if (isNiceFinancialDecision) {
       setHasBounceGameUnlocked(true);
-      const games: ("BOUNCE" | "STACK" | "TAP_MALI" | "SLICER")[] = ["STACK", "TAP_MALI", "SLICER", "BOUNCE"];
+      const games = ["SLICER", "BOUNCE", "TAP_MALI", "STACK"];
       const chosenGame = games[Math.floor(Math.random() * games.length)];
-      setUnlockedGameType(chosenGame);
+      setUnlockedGameType(chosenGame as any);
 
       if (chosenGame === "STACK") {
-        setBounceUnlockMessage(`✨ Proper Financial Decision! Wealth Tower Stack mini-game unlocked! Build your financial skyscraper! 🏢`);
+        unlockMilestoneGame("STACK", `🏆 MILESTONE UNLOCKED! Wealth Tower Stack mini-game unlocked! Build your skyscraper! 🏢`);
       } else if (chosenGame === "TAP_MALI") {
-        setBounceUnlockMessage(`✨ Wise Choice! Tap Mali Meerkat & Friends mini-game unlocked! Tap savers, dodge debt sharks! 🦦`);
+        unlockMilestoneGame("TAP_MALI", `🏆 MILESTONE UNLOCKED! Tap Mali Meerkat & Friends mini-game unlocked! Tap savers! 🦦`);
       } else if (chosenGame === "SLICER") {
-        setBounceUnlockMessage(`✨ Great Financial Strategy! Deal Slicer mini-game unlocked! Slice high-yield deals & discount vouchers! ✂️`);
+        unlockMilestoneGame("SLICER", `🏆 MILESTONE UNLOCKED! Deal Slicer mini-game unlocked! Slice deals & vouchers! ✂️`);
       } else {
-        setBounceUnlockMessage(`✨ Excellent Decision! MaliGo Bounce Blitz unlocked! Bounce off your wealth shield for cash! ⚽`);
+        unlockMilestoneGame("BOUNCE", `🏆 MILESTONE UNLOCKED! MaliGo Bounce Blitz unlocked! Bounce off wealth shield! ⚽`);
       }
+    }
+
+    // Check balance / savings / net worth milestones for automatic game unlocks
+    const currentNetWorth = Math.round(newBalance + newSavings - finalDebt);
+    if (newSavings >= 3000) {
+      unlockMilestoneGame("TAP_MALI", `🏆 SAVINGS MILESTONE UNLOCKED! Tap Mali Meerkat Game unlocked! 🦦`);
+    }
+    if (newSavings >= 8000 || currentNetWorth >= 10000) {
+      unlockMilestoneGame("STACK", `🏆 WEALTH TOWER MILESTONE! Stack High Game unlocked! 🏢`);
+    }
+    if (finalDebt === 0) {
+      unlockMilestoneGame("FLAPPY", `🏆 DEBT-FREE MILESTONE! Chrono-Flap Arcade unlocked! 🕹️`);
+    }
+    if (currentNetWorth >= 20000) {
+      unlockMilestoneGame("CHRONO", `🏆 FINANCIAL INDEPENDENCE MILESTONE! Chrono-Mirror Portal unlocked! 🕰️`);
     }
 
     // Record the choices made for AI feedback and ledger
@@ -741,6 +767,7 @@ export default function App() {
                     newAchievementsCount={newlyUnlockedIds.length}
                     hasBounceGameUnlocked={hasBounceGameUnlocked}
                     unlockedGameType={unlockedGameType}
+                    unlockedGamesList={unlockedGamesList}
                   />
                   <GameBoard
                     character={state.character}

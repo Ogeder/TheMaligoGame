@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Character } from "../types";
 import { MONTHS } from "../data/scenarios";
-import { Wallet, PiggyBank, Flame, Calendar, RefreshCw } from "lucide-react";
+import { Wallet, PiggyBank, Flame, Calendar, RefreshCw, Lock, Unlock, Sparkles, Gamepad2, X, CheckCircle2 } from "lucide-react";
 
 interface DashboardProps {
   character: Character;
@@ -25,6 +25,7 @@ interface DashboardProps {
   newAchievementsCount?: number;
   hasBounceGameUnlocked?: boolean;
   unlockedGameType?: "BOUNCE" | "STACK" | "TAP_MALI" | "SLICER" | null;
+  unlockedGamesList?: string[];
 }
 
 export default function Dashboard({
@@ -47,11 +48,73 @@ export default function Dashboard({
   onOpenAchievements,
   newAchievementsCount = 0,
   hasBounceGameUnlocked = false,
-  unlockedGameType = null
+  unlockedGameType = null,
+  unlockedGamesList = []
 }: DashboardProps) {
+  const [showMilestoneModal, setShowMilestoneModal] = useState<boolean>(false);
   const currentMonthName = MONTHS[monthIndex].name;
   const currentMonthTheme = MONTHS[monthIndex].theme;
   const progressPercent = Math.min(100, (eventIndex / totalEvents) * 100);
+
+  // All Milestone Arcade Games Definitions
+  const milestoneGames = [
+    {
+      id: "BOUNCE",
+      title: "MaliGo Bounce Blitz ⚽",
+      desc: "Bounce off your financial wealth shield to collect coin drops and extra cash bonuses!",
+      milestoneReq: "Wise Financial Decision in Scenarios or Cash >= R2,000",
+      action: onOpenBounceGame,
+      icon: "⚽",
+      color: "from-teal-500 to-emerald-600"
+    },
+    {
+      id: "SLICER",
+      title: "Deal Slicer ✂️",
+      desc: "Slice through high-yield deals and discount vouchers while slashing bad subscription fees!",
+      milestoneReq: "Wise Financial Decision or Debt Payoff",
+      action: onOpenDealSlicerGame,
+      icon: "✂️",
+      color: "from-cyan-500 to-teal-600"
+    },
+    {
+      id: "TAP_MALI",
+      title: "Tap Mali Meerkat & Friends 🦦",
+      desc: "Tap fast saver meerkats to build interest pools and dodge high-interest debt sharks!",
+      milestoneReq: "Automate >15% Savings or Accumulate R3,000 Savings",
+      action: onOpenTapMaliGame,
+      icon: "🦦",
+      color: "from-emerald-500 to-green-600"
+    },
+    {
+      id: "STACK",
+      title: "Stack High Wealth Tower 🏢",
+      desc: "Stack financial stability blocks to build your custom wealth skyscraper higher!",
+      milestoneReq: "Savings >= R8,000 or Net Worth >= R10,000",
+      action: onOpenStackGame,
+      icon: "🏢",
+      color: "from-amber-500 to-orange-600"
+    },
+    {
+      id: "FLAPPY",
+      title: "Chrono-Flap Arcade 🕹️",
+      desc: "Navigate through volatile interest rate pillars without crashing into debt traps!",
+      milestoneReq: "Completely Debt-Free (R0 Debt) or Complete Chapter 3",
+      action: onOpenFlappyGame,
+      icon: "🕹️",
+      color: "from-indigo-500 to-purple-600"
+    },
+    {
+      id: "CHRONO",
+      title: "Chrono-Mirror Portal 🕰️",
+      desc: "High-speed financial decision speedrunner simulator. Master time & money!",
+      milestoneReq: "Financial Independence (Net Worth >= R20,000) or Complete Chapter 6",
+      action: onOpenSpeedrunner,
+      icon: "🕰️",
+      color: "from-blue-600 to-indigo-700"
+    }
+  ];
+
+  const unlockedCount = milestoneGames.filter(g => unlockedGamesList.includes(g.id) || (g.id === "BOUNCE" && hasBounceGameUnlocked)).length;
 
   // Render Hearts
   const renderHearts = () => {
@@ -131,99 +194,42 @@ export default function Dashboard({
               </div>
             </div>
 
-            {onOpenSpeedrunner && (
-              <button
-                onClick={onOpenSpeedrunner}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-sans font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
-                title="Enter the Chrono-Mirror Labyrinth Portal"
-              >
-                <span>🕰️ Chrono-Mirror</span>
-              </button>
-            )}
+            {/* UNIFIED MILESTONE ARCADE LAUNCHER BUTTON */}
+            <button
+              onClick={() => setShowMilestoneModal(true)}
+              className="bg-gradient-to-r from-slate-900 to-indigo-950 hover:from-slate-800 hover:to-indigo-900 text-white font-sans font-black text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-md cursor-pointer border border-indigo-500/40 relative group"
+              title="Open Financial Milestone Arcade Games"
+            >
+              <Gamepad2 className="w-4 h-4 text-emerald-400 animate-pulse" />
+              <span>🎮 Milestone Arcade</span>
+              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 text-[10px] font-mono px-2 py-0.5 rounded-md font-bold">
+                {unlockedCount}/6
+              </span>
+              {unlockedCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-amber-400 text-slate-950 font-mono font-black text-[8px] px-1.5 py-0.5 rounded-full border border-white animate-bounce shadow-md">
+                  REWARD!
+                </span>
+              )}
+            </button>
 
-            {onOpenFlappyGame && (
-              <button
-                onClick={onOpenFlappyGame}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white font-sans font-bold text-xs px-3 py-2 rounded-xl transition-all flex items-center gap-1 shadow-sm cursor-pointer"
-                title="Play Chrono-Flap Labyrinth"
-              >
-                <span>🕹️ Flappy</span>
-              </button>
-            )}
-
-            {onOpenBounceGame && (
+            {/* Quick Access Pills for Unlocked Games ONLY */}
+            {unlockedGamesList.includes("BOUNCE") && onOpenBounceGame && (
               <button
                 onClick={onOpenBounceGame}
-                className={`text-white font-sans font-bold text-xs px-3 py-2 rounded-xl transition-all flex items-center gap-1 shadow-sm cursor-pointer relative border ${
-                  unlockedGameType === "BOUNCE" || (hasBounceGameUnlocked && !unlockedGameType)
-                    ? "bg-teal-500 hover:bg-teal-400 border-teal-300 animate-pulse text-slate-950 font-extrabold"
-                    : "bg-teal-700 hover:bg-teal-600 border-teal-600 opacity-90"
-                }`}
-                title="Play MaliGo Bounce Blitz"
+                className="bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs px-2.5 py-2 rounded-xl transition-all flex items-center gap-1 shadow-sm cursor-pointer border border-teal-300"
+                title="Play Bounce Blitz"
               >
-                <span>⚽ Bounce</span>
-                {(unlockedGameType === "BOUNCE" || (hasBounceGameUnlocked && !unlockedGameType)) && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-amber-400 text-slate-950 font-mono font-black text-[8px] px-1 py-0.2 rounded-full border border-white animate-bounce shadow-md">
-                    NEW!
-                  </span>
-                )}
+                ⚽ Bounce
               </button>
             )}
 
-            {onOpenStackGame && (
+            {unlockedGamesList.includes("STACK") && onOpenStackGame && (
               <button
                 onClick={onOpenStackGame}
-                className={`text-white font-sans font-bold text-xs px-3 py-2 rounded-xl transition-all flex items-center gap-1 shadow-sm cursor-pointer relative border ${
-                  unlockedGameType === "STACK"
-                    ? "bg-amber-500 hover:bg-amber-400 border-amber-300 animate-pulse text-slate-950 font-extrabold"
-                    : "bg-amber-700 hover:bg-amber-600 border-amber-600 opacity-90"
-                }`}
-                title="Play Stack High Wealth Tower"
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-2.5 py-2 rounded-xl transition-all flex items-center gap-1 shadow-sm cursor-pointer border border-amber-300"
+                title="Play Stack High"
               >
-                <span>🏢 Stack</span>
-                {unlockedGameType === "STACK" && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-amber-300 text-slate-950 font-mono font-black text-[8px] px-1 py-0.2 rounded-full border border-white animate-bounce shadow-md">
-                    NEW!
-                  </span>
-                )}
-              </button>
-            )}
-
-            {onOpenTapMaliGame && (
-              <button
-                onClick={onOpenTapMaliGame}
-                className={`text-white font-sans font-bold text-xs px-3 py-2 rounded-xl transition-all flex items-center gap-1 shadow-sm cursor-pointer relative border ${
-                  unlockedGameType === "TAP_MALI"
-                    ? "bg-emerald-500 hover:bg-emerald-400 border-emerald-300 animate-pulse text-slate-950 font-extrabold"
-                    : "bg-emerald-700 hover:bg-emerald-600 border-emerald-600 opacity-90"
-                }`}
-                title="Play Tap Mali the Meerkat & Friends"
-              >
-                <span>🦦 Tap Mali</span>
-                {unlockedGameType === "TAP_MALI" && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-amber-300 text-slate-950 font-mono font-black text-[8px] px-1 py-0.2 rounded-full border border-white animate-bounce shadow-md">
-                    NEW!
-                  </span>
-                )}
-              </button>
-            )}
-
-            {onOpenDealSlicerGame && (
-              <button
-                onClick={onOpenDealSlicerGame}
-                className={`text-white font-sans font-bold text-xs px-3 py-2 rounded-xl transition-all flex items-center gap-1 shadow-sm cursor-pointer relative border ${
-                  unlockedGameType === "SLICER"
-                    ? "bg-teal-400 hover:bg-teal-300 border-teal-200 animate-pulse text-slate-950 font-extrabold"
-                    : "bg-cyan-700 hover:bg-cyan-600 border-cyan-600 opacity-90"
-                }`}
-                title="Play Deal Slicer Fruit Ninja Style Cut"
-              >
-                <span>✂️ Slicer</span>
-                {unlockedGameType === "SLICER" && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-amber-300 text-slate-950 font-mono font-black text-[8px] px-1 py-0.2 rounded-full border border-white animate-bounce shadow-md">
-                    NEW!
-                  </span>
-                )}
+                🏢 Stack
               </button>
             )}
 
@@ -378,6 +384,124 @@ export default function Dashboard({
         </div>
 
       </div>
+
+      {/* MILESTONE ARCADE MODAL */}
+      <AnimatePresence>
+        {showMilestoneModal && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-2xl w-full shadow-2xl relative overflow-hidden max-h-[90vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-emerald-500 flex items-center justify-center text-xl text-slate-950 font-black shadow-lg">
+                    🎮
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-white flex items-center gap-2">
+                      Financial Milestone Arcade
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Mini-games unlock as rewards when you make great financial decisions or hit savings milestones!
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowMilestoneModal(false)}
+                  className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl cursor-pointer transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Games Grid */}
+              <div className="py-4 overflow-y-auto space-y-3.5 pr-1 flex-1">
+                {milestoneGames.map(game => {
+                  const isUnlocked = unlockedGamesList.includes(game.id) || (game.id === "BOUNCE" && hasBounceGameUnlocked);
+
+                  return (
+                    <div
+                      key={game.id}
+                      className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+                        isUnlocked 
+                          ? "bg-slate-950/90 border-emerald-500/50 shadow-lg"
+                          : "bg-slate-950/40 border-slate-800/80 opacity-75"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3.5 flex-1">
+                        <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${game.color} flex items-center justify-center text-2xl flex-shrink-0 shadow-md ${
+                          !isUnlocked && "grayscale opacity-50"
+                        }`}>
+                          {game.icon}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="text-sm font-black text-white">{game.title}</h4>
+                            {isUnlocked ? (
+                              <span className="text-[9px] font-mono font-black uppercase bg-emerald-950 text-emerald-300 border border-emerald-700/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-400" /> UNLOCKED REWARD
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-mono font-black uppercase bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <Lock className="w-3 h-3 text-slate-400" /> LOCKED MILESTONE
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-300 font-sans mb-1.5 leading-relaxed">
+                            {game.desc}
+                          </p>
+                          <div className="text-[11px] font-mono text-amber-300 flex items-center gap-1">
+                            <span>🎯 Requirement:</span>
+                            <span className="text-slate-300">{game.milestoneReq}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="w-full sm:w-auto flex justify-end">
+                        {isUnlocked ? (
+                          <button
+                            onClick={() => {
+                              setShowMilestoneModal(false);
+                              if (game.action) game.action();
+                            }}
+                            className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl cursor-pointer transition-all shadow-lg flex items-center justify-center gap-1.5"
+                          >
+                            Play Game 🎮
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            className="w-full sm:w-auto bg-slate-800 text-slate-500 font-bold text-xs px-4 py-2.5 rounded-xl cursor-not-allowed border border-slate-700 flex items-center justify-center gap-1.5"
+                          >
+                            <Lock className="w-3.5 h-3.5" /> Locked
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="pt-3 border-t border-slate-800 flex justify-between items-center text-xs text-slate-400 font-mono">
+                <span>Total Unlocked: <strong className="text-emerald-400">{unlockedCount} / 6</strong></span>
+                <button
+                  onClick={() => setShowMilestoneModal(false)}
+                  className="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2 rounded-xl transition-all cursor-pointer"
+                >
+                  Close Arcade
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
