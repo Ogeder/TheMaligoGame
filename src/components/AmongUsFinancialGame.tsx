@@ -32,14 +32,14 @@ interface AmongUsFinancialGameProps {
   onClose: () => void;
 }
 
-// Crewmate Colors
-const CREWMATE_COLORS = [
-  { name: "Cyan", body: "#06b6d4", shadow: "#0891b2", visor: "#93c5fd" },
-  { name: "Emerald", body: "#10b981", shadow: "#059669", visor: "#a7f3d0" },
-  { name: "Yellow", body: "#eab308", shadow: "#ca8a04", visor: "#fef08a" },
-  { name: "Pink", body: "#ec4899", shadow: "#db2777", visor: "#fbcfe8" },
-  { name: "Purple", body: "#a855f7", shadow: "#9333ea", visor: "#e9d5ff" },
-  { name: "Orange", body: "#f97316", shadow: "#ea580c", visor: "#fed7aa" }
+// Mali Meerkat Colors (Different Mali Fur Variants)
+const MALI_COLORS = [
+  { name: "Golden Sand Mali", fur: "#d97706", belly: "#fef3c7", patch: "#451a03", visor: "#93c5fd" },
+  { name: "Emerald Growth Mali", fur: "#059669", belly: "#d1fae5", patch: "#064e3b", visor: "#a7f3d0" },
+  { name: "Royal Cyan Mali", fur: "#0891b2", belly: "#cffafe", patch: "#164e63", visor: "#a5f3fc" },
+  { name: "Sunset Orange Mali", fur: "#ea580c", belly: "#ffedd5", patch: "#7c2d12", visor: "#fed7aa" },
+  { name: "Amethyst Spark Mali", fur: "#9333ea", belly: "#f3e8ff", patch: "#581c87", visor: "#e9d5ff" },
+  { name: "Ruby Wealth Mali", fur: "#dc2626", belly: "#fee2e2", patch: "#7f1d1d", visor: "#fca5a5" }
 ];
 
 // Map Rooms definition
@@ -406,47 +406,48 @@ export default function AmongUsFinancialGame({
     ctx.font = "bold 8px sans-serif";
     ctx.fillText("EMERGENCY", 400, 153);
 
-    // Draw Other AI Crewmates (NPCS wandering)
+    // Draw Other AI Mali Meerkats (NPCS wandering around station)
     const npcs = [
-      { x: 120, y: 320, color: "#ef4444", hat: "👑" },
-      { x: 650, y: 120, color: "#3b82f6", hat: "🎓" },
-      { x: 320, y: 340, color: "#10b981", hat: "🦦" }
+      { x: 120, y: 320, fur: "#dc2626", belly: "#fee2e2", patch: "#7f1d1d", visor: "#fca5a5", hat: "👑" },
+      { x: 650, y: 120, fur: "#0891b2", belly: "#cffafe", patch: "#164e63", visor: "#a5f3fc", hat: "🎓" },
+      { x: 320, y: 340, fur: "#059669", belly: "#d1fae5", patch: "#064e3b", visor: "#a7f3d0", hat: "🦦" }
     ];
     for (const npc of npcs) {
-      drawCrewmate(ctx, npc.x, npc.y, npc.color, "#b91c1c", "#93c5fd", false, 0, npc.hat);
+      drawMaliMeerkat(ctx, npc.x, npc.y, npc.fur, npc.belly, npc.patch, npc.visor, false, 0, npc.hat);
     }
 
-    // Draw Player Crewmate
-    const color = CREWMATE_COLORS[colorIndex];
-    drawCrewmate(ctx, px, py, color.body, color.shadow, color.visor, facingLeft, legCycle, hat);
+    // Draw Player Mali Meerkat
+    const maliColor = MALI_COLORS[colorIndex];
+    drawMaliMeerkat(ctx, px, py, maliColor.fur, maliColor.belly, maliColor.patch, maliColor.visor, facingLeft, legCycle, hat);
 
     // Player Name Tag
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 11px monospace";
     ctx.textAlign = "center";
-    ctx.fillText(character.name, px, py - 28);
+    ctx.fillText(`${character.name} (Mali)`, px, py - 36);
 
     // Highlight prompt if near a task
     if (nearbyTask && !activeModalTask) {
       ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
-      ctx.fillRect(px - 60, py - 52, 120, 20);
+      ctx.fillRect(px - 60, py - 58, 120, 20);
       ctx.strokeStyle = "#f59e0b";
       ctx.lineWidth = 1;
-      ctx.strokeRect(px - 60, py - 52, 120, 20);
+      ctx.strokeRect(px - 60, py - 58, 120, 20);
 
       ctx.fillStyle = "#fef08a";
       ctx.font = "bold 10px sans-serif";
-      ctx.fillText(`Press [E] or TAP to ${nearbyTask.title.split(" ")[0]}`, px, py - 38);
+      ctx.fillText(`Press [E] or TAP to ${nearbyTask.title.split(" ")[0]}`, px, py - 44);
     }
   };
 
-  // Helper function to render Among Us Crewmate Bean character
-  const drawCrewmate = (
+  // Helper function to render Mali the Meerkat in 2D Top-Down canvas
+  const drawMaliMeerkat = (
     ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
-    bodyColor: string,
-    shadowColor: string,
+    furColor: string,
+    bellyColor: string,
+    patchColor: string,
     visorColor: string,
     isFacingLeft: boolean,
     legCycle: number,
@@ -456,57 +457,115 @@ export default function AmongUsFinancialGame({
     ctx.translate(x, y);
     if (isFacingLeft) ctx.scale(-1, 1);
 
-    // Backpack
-    ctx.fillStyle = shadowColor;
+    // 1. Curved Meerkat Tail extending behind
+    ctx.strokeStyle = patchColor;
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.roundRect(-18, -12, 8, 18, 4);
+    ctx.moveTo(-8, 6);
+    ctx.quadraticCurveTo(-22, -6, -18, -22);
+    ctx.stroke();
+
+    // Dark Tail Tip
+    ctx.fillStyle = patchColor;
+    ctx.beginPath();
+    ctx.arc(-18, -22, 3.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Body Main Oval
-    ctx.fillStyle = bodyColor;
+    // 2. High-Tech Mali Utility Belt / Pack
+    ctx.fillStyle = patchColor;
     ctx.beginPath();
-    ctx.roundRect(-12, -20, 24, 30, 10);
+    ctx.roundRect(-16, -10, 7, 18, 3);
     ctx.fill();
 
-    // Body Shadow curve
-    ctx.fillStyle = shadowColor;
+    // 3. Upright Slender Body (Torso)
+    ctx.fillStyle = furColor;
     ctx.beginPath();
-    ctx.roundRect(-12, 0, 24, 10, [0, 0, 8, 8]);
+    ctx.roundRect(-11, -18, 22, 28, 10);
     ctx.fill();
 
-    // Animated Walking Legs
+    // Light Colored Belly Patch
+    ctx.fillStyle = bellyColor;
+    ctx.beginPath();
+    ctx.ellipse(0, -3, 6.5, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4. Animated Legs
     const legOffset = Math.sin(legCycle) * 5;
-    ctx.fillStyle = bodyColor;
+    ctx.fillStyle = furColor;
     // Left Leg
     ctx.beginPath();
-    ctx.roundRect(-10, 8 + legOffset, 8, 12, 4);
+    ctx.roundRect(-9, 8 + legOffset, 7, 11, 3);
     ctx.fill();
     // Right Leg
     ctx.beginPath();
-    ctx.roundRect(2, 8 - legOffset, 8, 12, 4);
+    ctx.roundRect(2, 8 - legOffset, 7, 11, 3);
     ctx.fill();
 
-    // Visor / Glass Oval
+    // Paws / Feet
+    ctx.fillStyle = patchColor;
+    ctx.fillRect(-10, 16 + legOffset, 8, 3);
+    ctx.fillRect(1, 16 - legOffset, 8, 3);
+
+    // Front Paws (folded over belly)
+    ctx.fillStyle = furColor;
+    ctx.beginPath();
+    ctx.ellipse(5, -6, 4.5, 3.5, Math.PI / 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5. Meerkat Head & Snout
+    ctx.fillStyle = furColor;
+    ctx.beginPath();
+    ctx.ellipse(0, -22, 11, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Pointy Meerkat Snout
+    ctx.fillStyle = bellyColor;
+    ctx.beginPath();
+    ctx.ellipse(6, -20, 6.5, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cute Dark Nose Tip
+    ctx.fillStyle = patchColor;
+    ctx.beginPath();
+    ctx.arc(10.5, -21, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rounded Meerkat Ears (Two ears)
+    // Left Ear
+    ctx.fillStyle = patchColor;
+    ctx.beginPath();
+    ctx.arc(-7, -29, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Right Ear
+    ctx.beginPath();
+    ctx.arc(3, -31, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 6. Signature Dark Eye Patch (Around Eyes)
+    ctx.fillStyle = patchColor;
+    ctx.beginPath();
+    ctx.ellipse(3, -23, 5.5, 4.5, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Expressive Eye / High-Tech Visor
     ctx.fillStyle = visorColor;
     ctx.beginPath();
-    ctx.ellipse(4, -8, 8, 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(4, -23, 3.5, 2.5, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "#1e293b";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
 
-    // Visor Shine Highlight
+    // Eye Shine Highlight
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.ellipse(6, -10, 3, 1.5, 0, 0, Math.PI * 2);
+    ctx.arc(5, -24, 1.2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Hat / Accessory
+    // Hat / Accessory on top of Mali's Head
     if (hatIcon) {
       ctx.fillStyle = "#ffffff";
       ctx.font = "14px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(hatIcon, 0, -22);
+      ctx.fillText(hatIcon, 0, -33);
     }
 
     ctx.restore();
@@ -617,16 +676,16 @@ export default function AmongUsFinancialGame({
         {/* Header Bar */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center text-xl text-slate-950 font-black shadow-lg">
-              ඞ
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-emerald-500 flex items-center justify-center text-xl text-slate-950 font-black shadow-lg">
+              🦦
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-black text-white flex items-center gap-1.5">
-                  MaliGo Crewmate Station (2D Top-Down)
+                  Mali's Financial Station (2D Top-Down)
                 </h3>
-                <span className="bg-cyan-950 text-cyan-300 border border-cyan-800 text-[10px] font-mono px-2 py-0.5 rounded-full font-bold">
-                  2D Among Us Engine
+                <span className="bg-amber-950 text-amber-300 border border-amber-800 text-[10px] font-mono px-2 py-0.5 rounded-full font-bold">
+                  Mali Meerkat Engine
                 </span>
               </div>
               <p className="text-xs text-slate-400">
@@ -743,12 +802,12 @@ export default function AmongUsFinancialGame({
 
           {/* Customization Bar Overlay */}
           <div className="absolute top-3 right-3 bg-slate-900/90 backdrop-blur-md p-2 rounded-2xl border border-slate-800 flex items-center gap-2 text-xs">
-            <span className="text-slate-400 font-mono text-[10px]">Color:</span>
+            <span className="text-slate-400 font-mono text-[10px]">Mali Fur:</span>
             <button
-              onClick={() => setColorIndex(prev => (prev + 1) % CREWMATE_COLORS.length)}
-              className="w-6 h-6 rounded-full border border-white shadow-md transition-all cursor-pointer"
-              style={{ backgroundColor: CREWMATE_COLORS[colorIndex].body }}
-              title="Change Crewmate Color"
+              onClick={() => setColorIndex(prev => (prev + 1) % MALI_COLORS.length)}
+              className="w-6 h-6 rounded-full border border-white shadow-md transition-all cursor-pointer hover:scale-110"
+              style={{ backgroundColor: MALI_COLORS[colorIndex].fur }}
+              title={`Mali Color: ${MALI_COLORS[colorIndex].name}`}
             />
             <span className="text-slate-400 font-mono text-[10px] ml-1">Hat:</span>
             <button

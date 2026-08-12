@@ -212,8 +212,8 @@ export default function GameBoard({
               onClick={() => setIsAmongUsGameOpen(true)}
               className="px-3.5 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 shadow-lg transition-all flex items-center gap-1.5 cursor-pointer animate-pulse border border-white/20"
             >
-              <span>ඞ</span>
-              <span>2D Station (Among Us Mode)</span>
+              <span>🦦</span>
+              <span>2D Mali Meerkat Station</span>
             </button>
           </div>
         </div>
