@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { FinancialEvent, DecisionOption, Character } from "../types";
+import UnityEnvironmentBridge from "./UnityEnvironmentBridge";
+import AmongUsFinancialGame from "./AmongUsFinancialGame";
 import { 
   Home, ShoppingCart, BookOpen, PartyPopper, 
   Bus, Heart, Wifi, Sparkles, Car, Palmtree, 
@@ -43,7 +45,8 @@ export default function GameBoard({
   lives,
   onStatsChanged
 }: GameBoardProps) {
-  const [activeTab, setActiveTab] = useState<"PLACE" | "DECISION" | "VAULT" | "SHOP">("PLACE");
+  const [activeTab, setActiveTab] = useState<"PLACE" | "DECISION" | "VAULT" | "SHOP" | "UNITY_3D">("PLACE");
+  const [isAmongUsGameOpen, setIsAmongUsGameOpen] = useState<boolean>(false);
   const [hasShield, setHasShield] = useState<boolean>(false);
   const [hasSolarInverter, setHasSolarInverter] = useState<boolean>(false);
   const [hasMoneyTree, setHasMoneyTree] = useState<boolean>(false);
@@ -196,6 +199,21 @@ export default function GameBoard({
               }`}
             >
               <ShoppingCart className="w-3.5 h-3.5" /> Place Upgrades
+            </button>
+            <button
+              onClick={() => setActiveTab("UNITY_3D")}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === "UNITY_3D" ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md font-extrabold" : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Gamepad2 className="w-3.5 h-3.5 text-purple-300" /> Unity 3D World
+            </button>
+            <button
+              onClick={() => setIsAmongUsGameOpen(true)}
+              className="px-3.5 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 shadow-lg transition-all flex items-center gap-1.5 cursor-pointer animate-pulse border border-white/20"
+            >
+              <span>ඞ</span>
+              <span>2D Station (Among Us Mode)</span>
             </button>
           </div>
         </div>
@@ -693,7 +711,53 @@ export default function GameBoard({
           </motion.div>
         )}
 
+        {/* TAB 5: UNITY 3D ENVIRONMENT BRIDGE */}
+        {activeTab === "UNITY_3D" && (
+          <motion.div
+            key="tab-unity-3d"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+          >
+            <UnityEnvironmentBridge
+              character={character}
+              balance={balance}
+              savings={savings}
+              debt={debt}
+              stress={stress}
+              lives={lives}
+              estateTitle={estate.title}
+              estateIcon={estate.icon}
+              hasSolarInverter={hasSolarInverter}
+              hasSmartLaptop={hasSmartLaptop}
+              hasShield={hasShield}
+              onBuySolarInverter={buySolarInverter}
+              onBuySmartLaptop={buySmartLaptop}
+              onBuyDebtShield={buyDebtShield}
+              onWaterPlant={buyMoneyTree}
+              plantLevel={hasMoneyTree ? 3 : 1}
+              lastNotification={lastNotification}
+            />
+          </motion.div>
+        )}
+
       </AnimatePresence>
+
+      {/* AMONG US 2D CREWMATE FINANCIAL STATION OVERLAY */}
+      {isAmongUsGameOpen && (
+        <AmongUsFinancialGame
+          character={character}
+          balance={balance}
+          savings={savings}
+          debt={debt}
+          stress={stress}
+          onRewardEarned={(cash, savingsBonus, msg) => {
+            onStatsChanged({ balance: cash, savings: savingsBonus, stress: -5 });
+            setLastNotification(msg);
+          }}
+          onClose={() => setIsAmongUsGameOpen(false)}
+        />
+      )}
 
     </div>
   );
